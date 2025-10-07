@@ -17,8 +17,8 @@ dotnet build KAIR/kairc/kairc.csproj -c Debug -r win-x64 --self-contained false
 ./hello.exe # 実行
 echo "Exit code: $LASTEXITCODE"  # 30
 
-# `samples/` フォルダに各 `.kir` ファイルがあります。
-# 冒頭コメントに解説が書かれてます。
+# `samples/` に `.kir` ファイルがあります。解説コメント付き
+# Win11 + intelしか試してない
 ./build.ps1 samples/test-operators.kir
 ./samples/test-operators.exe
 ```
