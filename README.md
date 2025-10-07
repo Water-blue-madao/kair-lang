@@ -62,7 +62,5 @@ s[0] = syscall GetStdHandle, -11           // 標準出力ハンドル取得
 - 検証環境 :  
   - intel 12th CPU  
   - Windows 11  
-- ライセンス :  
-  [MITライセンス](LICENSE)。  
--  余談 :
-  Claude Code神だけど金が溶けて危ない。
+- ライセンス : [MITライセンス](LICENSE)  
+-  余談 : Claude Code神だけど金が溶けて危ない。
