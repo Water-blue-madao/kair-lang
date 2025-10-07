@@ -1,26 +1,32 @@
 # KAIR (Kernel Assembly IR)
-
-CPUとOSの差異だけを吸収する雑IR。  
+**CPU・OSの差異を吸収するためだけのIR。**  
 超単純なレジスタマシンとしての抽象化を与えたい。
 - `[base + offset]` でアクセス、演算、終わり！笑
-- 完全ナイーブ実装(各命令ごとにload→演算→store)。最適化は後でやります。
-- アラインメントすら自己責任です。
+- 完全ナイーブ変換(各命令ごとにload→演算→store)。最適化は後でやります。
+- 8/16byteアラインメントすら自己責任です。
+
+## 依存ツールの準備
+単体ではアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。
+- **NASM** (<https://www.nasm.us/pub/nasm/releasebuilds/>)
+  `tools/nasm/` に展開。
+-  **GoLink** (<https://www.godevtool.com/> )
+  `tools/golink/` に展開。
 
 ## クイックスタート
-```bash
-# ビルド
-dotnet build KAIR/kairc/kairc.csproj -c Debug -r win-x64 --self-contained false
+```powershell
+# dotnet runして、kir->asm->obj->exe->サブシステム変更まで
+./build.ps1 samples/fibonacci.kir
+# 実行して終了コードを見てみる
+samples/fibonacci.exe ; echo "Exit code: $LASTEXITCODE" # 55
 
-# 使う
-./build.ps1 hello.kir # ビルド（KIR → EXE）
-./hello.exe # 実行
-echo "Exit code: $LASTEXITCODE"  # 30
-
-# `samples/` に `.kir` ファイルがあります。解説コメント付き
+# `samples/` から幾つか試せます。解説コメント付き
 # Win11 + intelしか試してない
-./build.ps1 samples/test-operators.kir
-./samples/test-operators.exe
 ```
+
+## ドキュメント
+- **[文法メモ.md](文法メモ.md)** : 言語仕様の詳細（ころころ変わる）
+- **[命令対応表.md](命令対応表.md)** : x64/ARM64での対応パターン
+- **[CLAUDE.md](CLAUDE.md)** : メイン開発者Claude様のお台所
 
 ## 基本文法
 ```kir
@@ -49,13 +55,6 @@ syscall ExitProcess, 42                    // 終了コード42で終了
 s[0] = syscall GetStdHandle, -11           // 標準出力ハンドル取得
 ```
 
-## ドキュメント
-
-- **[文法メモ.md](文法メモ.md)** : 言語仕様の詳細（ころころ変わる）
-- **[命令対応表.md](命令対応表.md)** : x64/ARM64での対応パターン
-- **[CLAUDE.md](CLAUDE.md)** : メイン開発者Claude様のお台所
-
-
 ## 検証環境
 
 - ハード:
@@ -66,22 +65,9 @@ s[0] = syscall GetStdHandle, -11           // 標準出力ハンドル取得
   - NASM 3.00
   - GoLink 1.0.4.6
 
-## 依存ツールの準備
-
-`build.ps1` は `tools/` 以下に配置された NASM と GoLink を利用します。リポジトリをクローンしたあと、以下の手順でローカルに配置してください。
-
-1. **NASM**
-   - 公式サイト <https://www.nasm.us/pub/nasm/releasebuilds/> から Windows 用 zip を取得します。
-   - 展開した `nasm.exe` と `ndisasm.exe` を `tools/nasm/` に配置します（フォルダが無ければ作成）。
-   - PATH に追加する場合はお好みで設定してください。
-
-2. **GoLink**
-   - Jeremy Gordon 氏のサイト <https://www.godevtool.com/> から GoLink をダウンロードします。
-   - アーカイブ内のファイルをすべて `tools/golink/` に配置します。
-
-これらのディレクトリは Git で無視されます。各開発者がローカルに配置する運用を想定しています。
-
 ## ライセンス
 
 このプロジェクトは [MIT License](LICENSE) の下で配布されます。
 
+### 余談
+Claude Code神だけど金が溶けて危ない。
