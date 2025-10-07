@@ -6,11 +6,14 @@
 - 8/16byteアラインメントすら自己責任です。
 
 ## 依存ツールの準備
-単体ではkirファイルからアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。
+
+- **.NET 8.0** (<https://dotnet.microsoft.com/ja-jp/download/dotnet/8.0>)  
 - **NASM** (<https://www.nasm.us/pub/nasm/releasebuilds/>)  
   `tools/nasm/` 直下にexeが来るように展開。
--  **GoLink** (<https://www.godevtool.com/> )  
+-  **GoLink** (<https://www.godevtool.com/>のLinkerって項 )  
   `tools/Golink/` 直下にexeが来るように展開。
+  
+  (単体ではkirファイルからアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。)
 
 ## クイックスタート
 ```powershell
@@ -55,19 +58,11 @@ syscall ExitProcess, 42                    // 終了コード42で終了
 s[0] = syscall GetStdHandle, -11           // 標準出力ハンドル取得
 ```
 
-## 検証環境
-
-- ハード:
-  - intel 12th CPU
-  - Windows 11
-- ソフト:
-  - .NET 8.0
-  - NASM 3.00
-  - GoLink 1.0.4.6
-
-## ライセンス
-
-このプロジェクトは [MIT License](LICENSE) の下で配布されます。
-
-### 余談
-Claude Code神だけど金が溶けて危ない。
+## その他
+- 検証環境 :  
+  - intel 12th CPU  
+  - Windows 11  
+- ライセンス :  
+  [MITライセンス](LICENSE)。  
+-  余談 :
+  Claude Code神だけど金が溶けて危ない。
