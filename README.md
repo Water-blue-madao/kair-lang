@@ -6,11 +6,11 @@
 - 8/16byteアラインメントすら自己責任です。
 
 ## 依存ツールの準備
-単体ではアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。
+単体ではkirファイルからアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。
 - **NASM** (<https://www.nasm.us/pub/nasm/releasebuilds/>)  
-  `tools/nasm/` に展開。
+  `tools/nasm/` 直下にexeが来るように展開。
 -  **GoLink** (<https://www.godevtool.com/> )  
-  `tools/golink/` に展開。
+  `tools/Golink/` 直下にexeが来るように展開。
 
 ## クイックスタート
 ```powershell
@@ -19,7 +19,7 @@
 # 実行して終了コードを見てみる
 samples/fibonacci.exe ; echo "Exit code: $LASTEXITCODE" # 55
 
-# `samples/` から幾つか試せます。解説コメント付き
+# 同じノリで`samples/` からkirを幾つか試せます。解説コメント付き
 # Win11 + intelしか試してない
 ```
 
