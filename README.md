@@ -7,9 +7,9 @@
 
 ## 依存ツールの準備
 単体ではアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。
-- **NASM** (<https://www.nasm.us/pub/nasm/releasebuilds/>)
+- **NASM** (<https://www.nasm.us/pub/nasm/releasebuilds/>)  
   `tools/nasm/` に展開。
--  **GoLink** (<https://www.godevtool.com/> )
+-  **GoLink** (<https://www.godevtool.com/> )  
   `tools/golink/` に展開。
 
 ## クイックスタート
