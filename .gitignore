@@ -10,6 +10,9 @@ samples/*.exe
 samples/*.obj
 samples/*.asm
 
+# Exclude workspace(it's temp folder)
+workspace/*
+
 # .NET build artifacts
 bin/
 obj/

@@ -1,23 +1,11 @@
 # KAIR Build Script
-# Builds .kir files in workspace/ directory only
-# Usage: .\build.ps1 <workspace/file.kir>
 param(
     [string]$InputFile,
     [string]$OutputExe = ""
 )
 
 if (-not $InputFile) {
-    Write-Host "Usage: .\build.ps1 workspace/<input.kir> [output.exe]"
-    Write-Host "  IMPORTANT: Build only in workspace/ directory"
-    Write-Host "  samples/ should contain only .kir files, no artifacts"
-    exit 1
-}
-
-# Verify input is in workspace/
-if (-not ($InputFile -match "^workspace[\\/]")) {
-    Write-Host "ERROR: Input file must be in workspace/ directory"
-    Write-Host "  samples/ is for final .kir files only, not for testing"
-    Write-Host "  Copy .kir to workspace/ for testing"
+    Write-Host "Usage: .\build.ps1 <input.kir> [output.exe]"
     exit 1
 }
 
