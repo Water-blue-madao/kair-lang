@@ -19,7 +19,7 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Error: {ex.Message}");
+            Console.Error.WriteLine($"エラー: {ex.Message}");
             return 1;
         }
     }
@@ -27,28 +27,28 @@ class Program
     static void PrintUsage()
     {
         Console.WriteLine("KAIR Compiler v0.1.0");
-        Console.WriteLine("Kernel Assembly IR - Cross-platform assembly abstraction layer");
+        Console.WriteLine("Kernel Assembly IR - クロスプラットフォーム向けアセンブリ抽象化レイヤー");
         Console.WriteLine();
-        Console.WriteLine("Usage:");
-        Console.WriteLine("  kair <input> [target] [options]        # Output assembly (.asm)");
-        Console.WriteLine("  kair build <input> [target] [options]  # Output executable (.exe)");
+        Console.WriteLine("使い方:");
+        Console.WriteLine("  kair <input> [target] [options]        # アセンブリ (.asm) を出力");
+        Console.WriteLine("  kair build <input> [target] [options]  # 実行ファイル (.exe) を出力");
         Console.WriteLine();
-        Console.WriteLine("Arguments:");
-        Console.WriteLine("  <input>          Input file (.kir or .asm)");
-        Console.WriteLine("  [target]         Target platform (optional)");
+        Console.WriteLine("引数:");
+        Console.WriteLine("  <input>          入力ファイル (.kir または .asm)");
+        Console.WriteLine("  [target]         ターゲットプラットフォーム（省略可）");
         Console.WriteLine("                   x64-win, x64-linux, arm64-linux, arm64-mac");
         Console.WriteLine();
-        Console.WriteLine("Options:");
-        Console.WriteLine("  -o <output>      Output file path (default: auto-generated)");
-        Console.WriteLine("  --nasm <path>    Path to NASM executable");
-        Console.WriteLine("  --golink <path>  Path to GoLink executable");
-        Console.WriteLine("  --emit-comments  Emit KIR source as comments in assembly");
+        Console.WriteLine("オプション:");
+        Console.WriteLine("  -o <output>      出力ファイルパス (既定: 自動生成)");
+        Console.WriteLine("  --nasm <path>    NASM 実行ファイルのパス");
+        Console.WriteLine("  --golink <path>  GoLink 実行ファイルのパス");
+        Console.WriteLine("  --emit-comments  アセンブリに KIR ソースをコメントとして出力");
         Console.WriteLine();
-        Console.WriteLine("Examples:");
+        Console.WriteLine("使用例:");
         Console.WriteLine("  kair program.kir                    # → program.asm");
-        Console.WriteLine("  kair program.kir x64-win            # → program.asm (x64-win target)");
+        Console.WriteLine("  kair program.kir x64-win            # → program.asm (ターゲット x64-win)");
         Console.WriteLine("  kair program.kir -o out.asm         # → out.asm");
-        Console.WriteLine("  kair program.kir --emit-comments    # → program.asm (with comments)");
+        Console.WriteLine("  kair program.kir --emit-comments    # → program.asm (コメント付き)");
         Console.WriteLine("  kair build program.kir              # → program.exe");
         Console.WriteLine("  kair build program.kir x64-linux    # → program (Linux x64)");
         Console.WriteLine("  kair build program.kir -o app.exe   # → app.exe");

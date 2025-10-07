@@ -33,7 +33,7 @@ public class NasmCodeGenerator
         Emit("extern GetStdHandle");
         Emit("extern WriteFile");
         Emit("");
-        Emit("global Start  ; CRITICAL: Must be 'Start' (not '_start') for GoLink");
+        Emit("global Start  ; 重要: GoLinkでは 'Start' (先頭に '_' なし) である必要がある");
         Emit("");
     }
 
@@ -54,18 +54,18 @@ public class NasmCodeGenerator
                 if (init.Offset > currentOffset)
                 {
                     long padding = init.Offset - currentOffset;
-                    Emit($"    resb {padding}  ; padding");
+                    Emit($"    resb {padding}  ; パディング");
                     currentOffset = init.Offset;
                 }
 
-                Emit($"    dq {init.Value}  ; offset {init.Offset}");
-                currentOffset += 8;  // dq = 8 bytes
+                Emit($"    dq {init.Value}  ; オフセット {init.Offset}");
+                currentOffset += 8;  // dq = 8 バイト
             }
             Emit("");
         }
         else
         {
-            Emit("    _data_base: resb 4096  ; reserve space for data");
+            Emit("    _data_base: resb 4096  ; データ領域として確保");
             Emit("");
         }
 
@@ -81,18 +81,18 @@ public class NasmCodeGenerator
                 if (init.Offset > currentOffset)
                 {
                     long padding = init.Offset - currentOffset;
-                    Emit($"    resb {padding}  ; padding");
+                    Emit($"    resb {padding}  ; パディング");
                     currentOffset = init.Offset;
                 }
 
-                Emit($"    dq {init.Value}  ; offset {init.Offset}");
-                currentOffset += 8;  // dq = 8 bytes
+                Emit($"    dq {init.Value}  ; オフセット {init.Offset}");
+                currentOffset += 8;  // dq = 8 バイト
             }
             Emit("");
         }
         else
         {
-            Emit("    _rodata_base: resb 4096  ; reserve space for const data");
+            Emit("    _rodata_base: resb 4096  ; 定数データ領域として確保");
             Emit("");
         }
     }
@@ -101,11 +101,11 @@ public class NasmCodeGenerator
     {
         Emit("section .text");
         Emit("Start:");
-        Emit("    ; Initialize stack");
-        Emit("    ; CRITICAL: Windows x64 calling convention");
-        Emit("    ; At entry: RSP % 16 == 0 (aligned by OS)");
-        Emit("    ; No initial alignment needed - syscalls will handle it");
-        Emit("    mov rbp, rsp    ; save base pointer");
+        Emit("    ; スタックを初期化");
+        Emit("    ; 重要: Windows x64 呼び出し規約");
+        Emit("    ; エントリ時: RSP % 16 == 0 (OS が整列)");
+        Emit("    ; 初期整列は不要 - syscall 側で対応");
+        Emit("    mov rbp, rsp    ; ベースポインタを保存");
         Emit("");
 
         foreach (var stmt in _program.Statements)
@@ -113,17 +113,17 @@ public class NasmCodeGenerator
             EmitStatement(stmt);
         }
 
-        // ENDラベル - exit code is at s[0]
+        // ENDラベル - 終了コードは s[0]
         Emit("");
         Emit("_END:");
-        Emit("    ; Exit program (Windows) - exit code at s[0]");
-        Emit("    mov rcx, [rsp]      ; load exit code from s[0]");
-        Emit("    ; CRITICAL: Align RSP to 16-byte boundary for call");
+        Emit("    ; プログラムを終了 (Windows) - 終了コードは s[0]");
+        Emit("    mov rcx, [rsp]      ; s[0] から終了コードを読み出す");
+        Emit("    ; 重要: CALL の前に RSP を16バイト境界に整列");
         Emit("    mov rax, rsp");
         Emit("    and rax, 15         ; rsp % 16");
-        Emit("    sub rsp, rax        ; align RSP so RSP % 16 == 0");
-        Emit("    sub rsp, 32         ; shadow space (keeps RSP % 16 == 0)");
-        Emit("    call ExitProcess    ; Direct call (RSP % 16 == 0 required)");
+        Emit("    sub rsp, rax        ; RSP を調整し RSP % 16 == 0 にする");
+        Emit("    sub rsp, 32         ; シャドウスペース (RSP % 16 == 0 を維持)");
+        Emit("    call ExitProcess    ; 直接呼び出し (RSP % 16 == 0 が必須)");
     }
 
     private void EmitStatement(Statement stmt)
@@ -185,10 +185,10 @@ public class NasmCodeGenerator
 
     private void EmitAssignment(Assignment assign)
     {
-        // source -> rax
+        // ソース → rax
         EmitLoadExpression(assign.Source, "rax");
 
-        // rax -> destination
+        // rax → 代入先
         EmitStoreToDestination(assign.Destination, "rax");
     }
 
@@ -203,7 +203,7 @@ public class NasmCodeGenerator
                 EmitStoreToMemory(mem, sourceReg);
                 break;
             default:
-                throw new NotImplementedException($"Cannot store to {dest.GetType().Name}");
+                throw new NotImplementedException($"{dest.GetType().Name} への保存は未対応です");
         }
     }
 
@@ -218,10 +218,10 @@ public class NasmCodeGenerator
             BaseRegister.Sp => "rsp",
             BaseRegister.Data => "_data_base",
             BaseRegister.Const => "_rodata_base",
-            _ => throw new NotImplementedException($"Base register {access.Base}")
+            _ => throw new NotImplementedException($"ベースレジスタ {access.Base} は未対応です")
         };
 
-        // 静的オフセット：直接 [base + offset] でアクセス（レジスタ不要）
+        // 静的オフセット: 直接 [base + offset] でアクセス（レジスタ不要）
         Emit($"    mov [{baseLabel} + {access.Offset}], {sourceReg}");
     }
 
@@ -229,13 +229,13 @@ public class NasmCodeGenerator
     {
         var skipLabel = GenerateLabel("skip_assign");
 
-        // 条件評価（反対条件でスキップ）
+        // 条件を評価し、成り立たない場合はスキップ
         EmitConditionJump(condAssign.Condition, skipLabel, invert: true);
 
-        // source -> rax
+        // ソース → rax
         EmitLoadExpression(condAssign.Source, "rax");
 
-        // rax -> destination
+        // rax → 代入先
         EmitStoreToDestination(condAssign.Destination, "rax");
 
         Emit($"{skipLabel}:");
@@ -246,49 +246,49 @@ public class NasmCodeGenerator
         var falseLabel = GenerateLabel("ternary_false");
         var endLabel = GenerateLabel("ternary_end");
 
-        // 条件評価
+        // 条件を評価
         EmitConditionJump(ternary.Condition, falseLabel, invert: true);
 
-        // true value -> rax
+        // 真の場合の値 → rax
         EmitLoadExpression(ternary.TrueValue, "rax");
         Emit($"    jmp {endLabel}");
 
         Emit($"{falseLabel}:");
-        // false value -> rax
+        // 偽の場合の値 → rax
         EmitLoadExpression(ternary.FalseValue, "rax");
 
         Emit($"{endLabel}:");
-        // rax -> destination
+        // rax → 代入先
         EmitStoreToDestination(ternary.Destination, "rax");
     }
 
     private void EmitCompoundAssignment(CompoundAssignment compound)
     {
-        // destination -> rax
+        // 代入先 → rax
         EmitLoadExpression(compound.Destination, "rax");
 
-        // source -> rbx
+        // ソース → rbx
         EmitLoadExpression(compound.Source, "rbx");
 
         // rax op= rbx
         EmitBinaryOperation(compound.Operator, "rax", "rbx");
 
-        // rax -> destination
+        // rax → 代入先
         EmitStoreToDestination(compound.Destination, "rax");
     }
 
     private void EmitStackPointerUpdate(StackPointerUpdate spUpdate)
     {
-        // KIR: sp += N means "allocate N bytes" (grow stack downward)
-        // ASM: sub rsp, N (stack grows down, but s[] offsets are positive upward)
+        // KIR: sp += N は「N バイトを確保」(スタックを下方向に拡張)
+        // ASM: sub rsp, N (スタックは下方向に伸びるが、s[] のオフセットは上方向へ正)
 
-        // sp -> rax
+        // sp → rax
         Emit("    mov rax, rsp");
 
-        // value -> rbx
+        // 値 → rbx
         EmitLoadExpression(spUpdate.Value, "rbx");
 
-        // INVERT operator: sp += N → sub rsp, N
+        // 演算子を反転: sp += N → sub rsp, N
         var invertedOp = spUpdate.Operator switch
         {
             BinaryOperator.Add => BinaryOperator.Sub,
@@ -297,7 +297,7 @@ public class NasmCodeGenerator
         };
         EmitBinaryOperation(invertedOp, "rax", "rbx");
 
-        // rax -> sp (RSP)
+        // rax → sp (RSP)
         Emit("    mov rsp, rax");
     }
 
@@ -308,16 +308,16 @@ public class NasmCodeGenerator
 
     private void EmitConditionJump(Condition condition, string targetLabel, bool invert)
     {
-        // left -> rax
+        // 左辺 → rax
         EmitLoadExpression(condition.Left, "rax");
 
-        // right -> rbx
+        // 右辺 → rbx
         EmitLoadExpression(condition.Right, "rbx");
 
-        // compare
+        // 比較
         Emit("    cmp rax, rbx");
 
-        // jump
+        // ジャンプ命令
         var jumpInstr = GetJumpInstruction(condition.Operator, invert);
         Emit($"    {jumpInstr} {targetLabel}");
     }
@@ -346,7 +346,7 @@ public class NasmCodeGenerator
             (ComparisonOperator.GreaterEqualS, true) => "jl",
             (ComparisonOperator.GreaterEqualU, false) => "jae",
             (ComparisonOperator.GreaterEqualU, true) => "jb",
-            _ => throw new NotImplementedException($"Comparison operator {op}")
+            _ => throw new NotImplementedException($"比較演算子 {op} は未対応です")
         };
     }
 
@@ -377,7 +377,7 @@ public class NasmCodeGenerator
                 break;
 
             case BinaryOperation binOp:
-                // CRITICAL: push/pop を使わない（RSP を変更してはいけない）
+                // 重要: push/pop を使わない (RSP を変更してはならない)
                 // シフト演算は RCX を使う必要があるため特別扱い
                 if (binOp.Operator == BinaryOperator.LeftShift ||
                     binOp.Operator == BinaryOperator.RightShiftS ||
@@ -406,7 +406,7 @@ public class NasmCodeGenerator
                 break;
 
             default:
-                throw new NotImplementedException($"Expression type {expr.GetType().Name}");
+                throw new NotImplementedException($"式種類 {expr.GetType().Name} は未対応です");
         }
     }
 
@@ -421,16 +421,16 @@ public class NasmCodeGenerator
             BaseRegister.Sp => "rsp",
             BaseRegister.Data => "_data_base",
             BaseRegister.Const => "_rodata_base",
-            _ => throw new NotImplementedException($"Base register {access.Base}")
+            _ => throw new NotImplementedException($"ベースレジスタ {access.Base} は未対応です")
         };
 
-        // 静的オフセット：直接 [base + offset] でアクセス（レジスタ不要）
+        // 静的オフセット: 直接 [base + offset] でアクセス（レジスタ不要）
         Emit($"    mov {destReg}, [{baseLabel} + {access.Offset}]");
     }
 
     private void EmitLoadFromMemory(MemoryAccess mem, string destReg)
     {
-        // 完全ナイーブ：アドレス計算→load（すべてステップごとに完結）
+        // 完全に単純化: アドレス計算 → ロード (各ステップで完結)
         var address = CalculateAddress(mem);
         var size = GetMemorySize(mem.Type);
         var isSigned = IsSignedMemoryType(mem.Type);
@@ -463,10 +463,10 @@ public class NasmCodeGenerator
 
     private void EmitStoreToMemory(MemoryAccess mem, string sourceReg)
     {
-        // Save sourceReg without using stack (push changes RSP!)
-        Emit($"    mov rbx, {sourceReg}  ; save value");
+        // スタックを使わずに sourceReg を退避 (push は RSP を変更してしまう)
+        Emit($"    mov rbx, {sourceReg}  ; 値を退避");
         var address = CalculateAddress(mem);
-        Emit($"    mov {sourceReg}, rbx  ; restore value");
+        Emit($"    mov {sourceReg}, rbx  ; 値を戻す");
 
         var size = GetMemorySize(mem.Type);
 
@@ -489,7 +489,7 @@ public class NasmCodeGenerator
 
     private string CalculateAddress(MemoryAccess mem)
     {
-        // 完全ナイーブ：アドレス計算専用レジスタrdiを使用
+        // 完全に単純化: アドレス計算専用レジスタ rdi を使用
         var baseReg = mem.Type switch
         {
             MemoryType.Mem or MemoryType.Mem8 or MemoryType.Mem16 or MemoryType.Mem32 or MemoryType.Mem64 or
@@ -504,10 +504,10 @@ public class NasmCodeGenerator
             MemoryType.C or MemoryType.C8 or MemoryType.C16 or MemoryType.C32 or MemoryType.C64 or
             MemoryType.C8s or MemoryType.C16s or MemoryType.C32s => "_rodata_base",
 
-            _ => throw new NotImplementedException($"Memory type {mem.Type}")
+            _ => throw new NotImplementedException($"メモリ種別 {mem.Type} は未対応です")
         };
 
-        // アドレス計算を rdi に（専用レジスタとして使う）
+        // アドレス計算を rdi で行う (専用レジスタとして利用)
         EmitLoadExpression(mem.Address, "rdi");
 
         if (baseReg != null)
@@ -569,7 +569,7 @@ public class NasmCodeGenerator
                 Emit($"    xor {destReg}, {sourceReg}");
                 break;
             case BinaryOperator.LeftShift:
-                // sourceReg は rcx であることが前提（EmitLoadExpression で保証）
+                // sourceReg は rcx であることが前提 (EmitLoadExpression で保証)
                 Emit($"    shl {destReg}, cl");
                 break;
             case BinaryOperator.RightShiftS:
@@ -581,7 +581,7 @@ public class NasmCodeGenerator
                 Emit($"    shr {destReg}, cl");
                 break;
             default:
-                throw new NotImplementedException($"Binary operator {op}");
+                throw new NotImplementedException($"二項演算子 {op} は未対応です");
         }
     }
 
@@ -596,7 +596,7 @@ public class NasmCodeGenerator
                 Emit($"    not {reg}");
                 break;
             default:
-                throw new NotImplementedException($"Unary operator {op}");
+                throw new NotImplementedException($"単項演算子 {op} は未対応です");
         }
     }
 
@@ -616,7 +616,7 @@ public class NasmCodeGenerator
             MemoryType.Mem8 or MemoryType.Mem8s or MemoryType.S8 or MemoryType.S8s or
             MemoryType.D8 or MemoryType.D8s or MemoryType.C8 or MemoryType.C8s => 1,
 
-            _ => throw new NotImplementedException($"Memory type {type}")
+            _ => throw new NotImplementedException($"メモリ種別 {type} は未対応です")
         };
     }
 
@@ -644,7 +644,7 @@ public class NasmCodeGenerator
         if (expr is NumberLiteral num)
             return num.Value;
 
-        throw new NotImplementedException("Only constant literals are supported in data section");
+        throw new NotImplementedException("データセクションでは定数リテラルのみをサポートしています");
     }
 
     private string GenerateLabel(string prefix)
@@ -667,7 +667,7 @@ public class NasmCodeGenerator
 
     private void EmitSyscallArgument(Expression arg, string destReg)
     {
-        // For syscall arguments, d[] and c[] should load the ADDRESS, not the value
+        // システムコールの引数では、d[] と c[] は値ではなくアドレスを読み込む必要がある
         if (arg is MemoryAccess mem && (
             mem.Type == MemoryType.D || mem.Type == MemoryType.D8 || mem.Type == MemoryType.D16 ||
             mem.Type == MemoryType.D32 || mem.Type == MemoryType.D64 ||
@@ -676,75 +676,75 @@ public class NasmCodeGenerator
             mem.Type == MemoryType.C32 || mem.Type == MemoryType.C64 ||
             mem.Type == MemoryType.C8s || mem.Type == MemoryType.C16s || mem.Type == MemoryType.C32s))
         {
-            // Load address of data/const section
+            // データ/定数セクションのアドレスをロード
             EmitLoadExpression(mem.Address, "rdi");
             var baseLabel = mem.Type.ToString().StartsWith("D") ? "_data_base" : "_rodata_base";
             Emit($"    lea rsi, [{baseLabel}]");
             Emit($"    add rdi, rsi");
-            Emit($"    mov {destReg}, rdi  ; load address of {mem.Type}[]");
+            Emit($"    mov {destReg}, rdi  ; {mem.Type}[] のアドレスを読み込む");
         }
         else
         {
-            // Normal value load
+            // 通常の値読み込み
             EmitLoadExpression(arg, destReg);
         }
     }
 
     private void EmitSyscall(Syscall syscall)
     {
-        Emit($"    ; syscall {syscall.FunctionName}");
+        Emit($"    ; システムコール {syscall.FunctionName}");
 
-        // Windows x64 calling convention:
-        // Args: RCX, RDX, R8, R9, then [RSP+32], [RSP+40], ...
-        // Shadow space: 32 bytes minimum
-        // RSP must be aligned to 16 bytes before CALL
+        // Windows x64 呼び出し規約:
+        // 引数: RCX, RDX, R8, R9, それ以降は [RSP+32], [RSP+40], ...
+        // シャドウスペース: 最低 32 バイト
+        // CALL の前に RSP は16バイト境界に整列されている必要がある
 
         var argRegs = new[] { "rcx", "rdx", "r8", "r9" };
 
-        // Calculate total stack space needed
-        // Shadow space (32) + stack args (8 bytes each for args 5+)
-        // CRITICAL: Must be multiple of 16 to keep RSP % 16 == 0
+        // スタック領域の合計を計算
+        // シャドウスペース (32) + スタック引数 (引数5以降は1つにつき8バイト)
+        // 重要: RSP % 16 == 0 を維持するため16の倍数にする必要がある
         int stackArgCount = Math.Max(0, syscall.Arguments.Count - 4);
         int shadowAndArgs = 32 + (stackArgCount * 8);
-        // Round up to next multiple of 16
+        // 次の16の倍数に切り上げ
         int stackSpace = ((shadowAndArgs + 15) / 16) * 16;
 
-        // Load arguments into registers (first 4)
+        // 引数をレジスタにロード (先頭4つ)
         for (int i = 0; i < Math.Min(syscall.Arguments.Count, 4); i++)
         {
             EmitSyscallArgument(syscall.Arguments[i], argRegs[i]);
         }
 
-        // Ensure RSP % 16 == 0 before allocating stack
+        // スタックを確保する前に RSP % 16 == 0 を保証
         Emit($"    mov rax, rsp");
         Emit($"    and rax, 15");
-        Emit($"    sub rsp, rax        ; align RSP to 16-byte boundary");
+        Emit($"    sub rsp, rax        ; RSP を16バイト境界に整列");
 
-        // Allocate stack space for shadow space and stack arguments
-        Emit($"    sub rsp, {stackSpace}  ; shadow + args (keeps RSP % 16 == 0)");
+        // シャドウスペースおよびスタック引数分の領域を確保
+        Emit($"    sub rsp, {stackSpace}  ; シャドウスペース + 引数 (RSP % 16 == 0 を維持)");
 
-        // Load stack arguments (5+) if any
+        // スタック引数 (5番目以降) をロード
         if (stackArgCount > 0)
         {
             for (int i = 0; i < stackArgCount; i++)
             {
                 EmitSyscallArgument(syscall.Arguments[i + 4], "rax");
-                Emit($"    mov [rsp + {32 + i * 8}], rax  ; stack arg {i + 5}");
+                Emit($"    mov [rsp + {32 + i * 8}], rax  ; スタック引数 {i + 5}");
             }
         }
 
-        // Call the function (GoLink import stub - direct call, not indirect)
+        // 関数を呼び出す (GoLink のインポートスタブ - 間接呼び出しではなく直接呼び出す)
         Emit($"    call {syscall.FunctionName}");
 
-        // Check if this is a no-return function (like ExitProcess)
+        // 戻らない関数 (ExitProcess など) かどうかを確認
         bool isNoReturn = syscall.FunctionName == "ExitProcess";
 
         if (!isNoReturn)
         {
-            // Clean up stack
+            // スタックを解放
             Emit($"    add rsp, {stackSpace}");
 
-            // Store return value if needed
+            // 戻り値が必要なら保存
             if (syscall.Destination != null)
             {
                 EmitStoreToDestination(syscall.Destination, "rax");

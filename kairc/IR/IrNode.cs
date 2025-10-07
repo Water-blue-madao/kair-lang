@@ -1,8 +1,8 @@
 namespace Kairc.IR;
 
 /// <summary>
-/// Internal IR のベースノード
-/// Asm IR の全構文を表現可能 + コンパイラ拡張
+/// 内部IRの基底ノード
+/// Asm IRの全構文を表現可能 + コンパイラ拡張
 /// </summary>
 public abstract class IrNode
 {
@@ -27,7 +27,7 @@ public class IrProgram : IrNode
 /// </summary>
 public class DataInitialization : IrNode
 {
-    public BaseRegister Section { get; set; }  // Data or Const
+    public BaseRegister Section { get; set; }  // Data または Const
     public long Offset { get; set; }
     public long Value { get; set; }  // 静的な値のみ
 }
@@ -43,20 +43,20 @@ public class Label : Statement
 
 public class Assignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess or BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
     public Expression Source { get; set; } = null!;
 }
 
 public class ConditionalAssignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess or BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
     public Expression Source { get; set; } = null!;
     public Condition Condition { get; set; } = null!;
 }
 
 public class TernaryAssignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess or BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
     public Condition Condition { get; set; } = null!;
     public Expression TrueValue { get; set; } = null!;
     public Expression FalseValue { get; set; } = null!;
@@ -64,7 +64,7 @@ public class TernaryAssignment : Statement
 
 public class CompoundAssignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess or BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
     public BinaryOperator Operator { get; set; }
     public Expression Source { get; set; } = null!;
 }
@@ -93,12 +93,12 @@ public class StackPointerUpdate : Statement
 
 public class Align : Statement
 {
-    public int Alignment { get; set; }  // 16 or 8
+    public int Alignment { get; set; }  // 16 または 8
 }
 
 public class Syscall : Statement
 {
-    public Expression? Destination { get; set; }  // null if no return value (MemoryAccess or BaseOffsetAccess)
+    public Expression? Destination { get; set; }  // null の場合は戻り値なし (MemoryAccess または BaseOffsetAccess)
     public string FunctionName { get; set; } = "";
     public List<Expression> Arguments { get; set; } = new();
 }
@@ -130,7 +130,7 @@ public class StackPointer : Expression { }  // sp
 /// </summary>
 public class DataBaseAddress : Expression
 {
-    public BaseRegister Section { get; set; }  // Data or Const
+    public BaseRegister Section { get; set; }  // Data または Const
 }
 
 /// <summary>

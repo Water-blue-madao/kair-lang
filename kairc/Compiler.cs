@@ -15,7 +15,7 @@ public class Compiler
 
     public void Run()
     {
-        // Validate input file exists
+        // 入力ファイルの存在確認
         if (!File.Exists(_options.InputFile))
             throw new FileNotFoundException($"Input file not found: {_options.InputFile}");
 
@@ -42,7 +42,7 @@ public class Compiler
     {
         Console.WriteLine($"Compiling {_options.InputFile} to {_options.OutputFile}...");
 
-        // Asm IR → Internal IR → NASM
+        // Asm IR → 内部IR → NASM
         var source = File.ReadAllText(_options.InputFile);
         var asmCode = CompileSourceToAsm(source);
         File.WriteAllText(_options.OutputFile, asmCode);
@@ -54,7 +54,7 @@ public class Compiler
     {
         Console.WriteLine($"Compiling {_options.InputFile} to {_options.OutputFile}...");
 
-        // Step 1: IR -> ASM
+        // ステップ1: IR -> ASM
         var tempAsmFile = Path.GetTempFileName() + ".asm";
         try
         {
@@ -62,12 +62,12 @@ public class Compiler
             var asmCode = CompileSourceToAsm(source);
             File.WriteAllText(tempAsmFile, asmCode);
 
-            // Step 2: ASM -> EXE
+            // ステップ2: ASM -> EXE
             AssembleToExe(tempAsmFile, _options.OutputFile);
         }
         finally
         {
-            // Clean up temp file
+            // 一時ファイルをクリーンアップ
             if (File.Exists(tempAsmFile))
                 File.Delete(tempAsmFile);
         }
@@ -86,7 +86,7 @@ public class Compiler
         var parser = new Parser.Parser(tokens, sourceLines);
         var program = parser.Parse();
 
-        // Code Generator
+        // コード生成器
         var codeGen = new NasmCodeGenerator(program, _options.EmitComments);
         return codeGen.Generate();
     }
@@ -99,15 +99,15 @@ public class Compiler
 
         try
         {
-            // Step 1: NASM -> OBJ
+            // ステップ1: NASM -> OBJ
             AssemblerHelper.RunNasm(_options.NasmPath, asmFile, objFile);
 
-            // Step 2: OBJ -> EXE
+            // ステップ2: OBJ -> EXE
             LinkerHelper.RunGoLink(_options.GoLinkPath, objFile, exeFile);
         }
         finally
         {
-            // Clean up temp obj file
+            // 一時OBJファイルをクリーンアップ
             if (File.Exists(objFile))
                 File.Delete(objFile);
         }

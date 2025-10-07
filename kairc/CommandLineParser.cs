@@ -31,7 +31,7 @@ public static class CommandLineParser
     public static CompilerOptions Parse(string[] args)
     {
         if (args.Length == 0)
-            throw new ArgumentException("No input file specified");
+            throw new ArgumentException("入力ファイルが指定されていません");
 
         string? inputFile = null;
         string? outputFile = null;
@@ -41,18 +41,18 @@ public static class CommandLineParser
         string golinkPath = "tools/golink/GoLink.exe";
         bool emitComments = false;
 
-        // Detect subcommand: "build" means exe, no subcommand means asm
+        // サブコマンドを判定: "build" は実行ファイル、サブコマンドなしはアセンブリ出力
         bool isBuildMode = (args[0] == "build");
         int startIndex = isBuildMode ? 1 : 0;
 
-        // Set default mode based on subcommand
+        // サブコマンドに基づいてデフォルトモードを設定
         if (isBuildMode)
         {
-            mode = CompileMode.IrToExe;  // build → exe
+            mode = CompileMode.IrToExe;  // build → 実行ファイル
         }
         else
         {
-            mode = CompileMode.IrToAsm;  // no subcommand → asm
+            mode = CompileMode.IrToAsm;  // サブコマンドなし → アセンブリ出力
         }
 
         for (int i = startIndex; i < args.Length; i++)
@@ -62,11 +62,11 @@ public static class CommandLineParser
                 case "-o":
                 case "--output":
                     if (i + 1 >= args.Length)
-                        throw new ArgumentException("Missing output file after -o");
+                        throw new ArgumentException("-o の後に出力ファイルが指定されていません");
                     outputFile = args[++i];
                     break;
 
-                // These options can override the default mode
+                // これらのオプションはデフォルトモードを上書きできる
                 case "--ir-to-asm":
                     mode = CompileMode.IrToAsm;
                     break;
@@ -81,13 +81,13 @@ public static class CommandLineParser
 
                 case "--nasm":
                     if (i + 1 >= args.Length)
-                        throw new ArgumentException("Missing path after --nasm");
+                        throw new ArgumentException("--nasm の後にパスが指定されていません");
                     nasmPath = args[++i];
                     break;
 
                 case "--golink":
                     if (i + 1 >= args.Length)
-                        throw new ArgumentException("Missing path after --golink");
+                        throw new ArgumentException("--golink の後にパスが指定されていません");
                     golinkPath = args[++i];
                     break;
 
@@ -97,39 +97,39 @@ public static class CommandLineParser
 
                 default:
                     if (args[i].StartsWith("-"))
-                        throw new ArgumentException($"Unknown option: {args[i]}");
+                        throw new ArgumentException($"不明なオプション: {args[i]}");
 
-                    // First positional arg is input file
+                    // 最初の位置引数は入力ファイル
                     if (inputFile == null)
                     {
                         inputFile = args[i];
                     }
-                    // Second positional arg could be target (x64-win, arm64-linux, etc.)
+                    // 2番目の位置引数はターゲット (x64-win, arm64-linux など) になり得る
                     else if (targetStr == null && IsTargetString(args[i]))
                     {
                         targetStr = args[i];
                     }
                     else
                     {
-                        throw new ArgumentException($"Unexpected argument: {args[i]}");
+                        throw new ArgumentException($"予期しない引数: {args[i]}");
                     }
                     break;
             }
         }
 
         if (inputFile == null)
-            throw new ArgumentException("No input file specified");
+            throw new ArgumentException("入力ファイルが指定されていません");
 
-        // Mode is already set based on subcommand (build or not)
-        // But handle .asm files specially
+        // モードはサブコマンドの有無に基づいて既に設定済み
+        // ただし .asm ファイルは特別扱いする
         var ext = Path.GetExtension(inputFile).ToLowerInvariant();
         if (ext == ".asm" && mode == CompileMode.IrToAsm)
         {
-            // If input is .asm and mode is IrToAsm, switch to AsmToExe
+            // 入力が .asm かつモードが IrToAsm の場合、AsmToExe に切り替える
             mode = CompileMode.AsmToExe;
         }
 
-        // Auto-generate output file if not specified
+        // 出力ファイルが指定されていない場合は自動生成
         if (outputFile == null)
         {
             var baseName = Path.GetFileNameWithoutExtension(inputFile);
@@ -142,7 +142,7 @@ public static class CommandLineParser
             };
         }
 
-        // Parse target if specified
+        // ターゲットが指定されていれば解析
         TargetPlatform? target = targetStr != null ? ParseTarget(targetStr) : null;
 
         return new CompilerOptions
@@ -175,7 +175,7 @@ public static class CommandLineParser
             "x64-linux" or "linux-x64" => TargetPlatform.X64Linux,
             "arm64-linux" or "linux-arm64" => TargetPlatform.Arm64Linux,
             "arm64-mac" or "mac-arm64" or "arm64-macos" or "macos-arm64" => TargetPlatform.Arm64Mac,
-            _ => throw new ArgumentException($"Unknown target platform: {target}")
+            _ => throw new ArgumentException($"不明なターゲットプラットフォーム: {target}")
         };
     }
 
@@ -183,7 +183,7 @@ public static class CommandLineParser
     {
         if (targetStr == null)
         {
-            // Default to current OS
+            // デフォルトは現在のOS
             return OperatingSystem.IsWindows() ? ".exe" : "";
         }
 

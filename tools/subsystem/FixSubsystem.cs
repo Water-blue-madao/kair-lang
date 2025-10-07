@@ -7,7 +7,7 @@ class FixSubsystem
     {
         if (args.Length == 0)
         {
-            Console.WriteLine("Usage: FixSubsystem <exe-file>");
+            Console.WriteLine("使い方: FixSubsystem <exe-file>");
             return;
         }
 
@@ -17,40 +17,40 @@ class FixSubsystem
         using (BinaryReader br = new BinaryReader(fs))
         using (BinaryWriter bw = new BinaryWriter(fs))
         {
-            // Read DOS header
+            // DOSヘッダーを読み込む
             fs.Seek(0x3C, SeekOrigin.Begin);
             int peOffset = br.ReadInt32();
 
-            // Seek to PE signature
+            // PEシグネチャ位置へ移動
             fs.Seek(peOffset, SeekOrigin.Begin);
             int peSig = br.ReadInt32();
 
             if (peSig != 0x00004550) // "PE\0\0"
             {
-                Console.WriteLine("Not a valid PE file");
+                Console.WriteLine("有効なPEファイルではありません");
                 return;
             }
 
-            // Skip COFF header (20 bytes) to get to Optional Header
+            // オプショナルヘッダーに進むためCOFFヘッダー(20バイト)をスキップ
             fs.Seek(peOffset + 4 + 20, SeekOrigin.Begin);
 
-            // Read magic number
+            // マジックナンバーを読み込む
             short magic = br.ReadInt16();
 
-            // Subsystem is at offset +68 in Optional Header (for PE32+)
-            int subsystemOffset = (magic == 0x20b) ? 68 : 68; // PE32+ or PE32
+            // サブシステムはオプショナルヘッダー内のオフセット+68 (PE32+ の場合)
+            int subsystemOffset = (magic == 0x20b) ? 68 : 68; // PE32+ または PE32
 
             fs.Seek(peOffset + 4 + 20 + subsystemOffset, SeekOrigin.Begin);
 
-            // Read current subsystem
+            // 現在のサブシステムを読み込む
             short subsystem = br.ReadInt16();
-            Console.WriteLine($"Current subsystem: {subsystem} ({(subsystem == 2 ? "GUI" : subsystem == 3 ? "Console" : "Other")})");
+            Console.WriteLine($"現在のサブシステム: {subsystem} ({(subsystem == 2 ? "GUI" : subsystem == 3 ? "Console" : "Other")})");
 
-            // Write new subsystem (3 = Console)
+            // 新しいサブシステムを書き込む (3 = Console)
             fs.Seek(peOffset + 4 + 20 + subsystemOffset, SeekOrigin.Begin);
             bw.Write((short)3);
 
-            Console.WriteLine("Changed subsystem to Console (3)");
+            Console.WriteLine("サブシステムを Console (3) に変更しました");
         }
     }
 }

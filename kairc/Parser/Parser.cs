@@ -95,16 +95,16 @@ public class Parser
         else if (Match(TokenType.Const))
             section = BaseRegister.Const;
         else
-            throw Error("Expected 'data' or 'const' in data initialization");
+            throw Error("データ初期化では 'data' か 'const' が必要です");
 
-        Consume(TokenType.Plus, "Expected '+'");
+        Consume(TokenType.Plus, "PLUS が必要です");
         long offset = ParseNumberValue();
-        Consume(TokenType.RightBracket, "Expected ']'");
-        Consume(TokenType.Assign, "Expected '='");
+        Consume(TokenType.RightBracket, "']' が必要です");
+        Consume(TokenType.Assign, "'=' が必要です");
 
         // 値は静的な数値リテラルのみ
         if (!Check(TokenType.Number))
-            throw Error("Data initialization value must be a static number literal");
+            throw Error("データ初期化の値は静的な数値リテラルでなければなりません");
 
         long value = ParseNumberValue();
 
@@ -144,7 +144,7 @@ public class Parser
             }
             else
             {
-                target = Consume(TokenType.Identifier, "Expected label name or END").Lexeme;
+                target = Consume(TokenType.Identifier, "ラベル名または END が必要です").Lexeme;
             }
 
             // 条件付き goto
@@ -173,14 +173,14 @@ public class Parser
         {
             var alignment = (int)ParseNumberValue();
             if (alignment != 8 && alignment != 16)
-                throw Error("Alignment must be 8 or 16");
+                throw Error("アラインメントは 8 または 16 でなければなりません");
             return new Align { Alignment = alignment, SourceText = sourceLine };
         }
 
         // syscall
         if (Match(TokenType.Syscall))
         {
-            var functionName = Consume(TokenType.Identifier, "Expected function name").Lexeme;
+            var functionName = Consume(TokenType.Identifier, "関数名が必要です").Lexeme;
             var args = new List<Expression>();
 
             // Parse arguments: syscall FuncName, arg1, arg2, ...
@@ -226,12 +226,12 @@ public class Parser
             }
 
             // 通常の代入
-            Consume(TokenType.Assign, "Expected '=' or compound assignment operator");
+            Consume(TokenType.Assign, "'=' または複合代入演算子が必要です");
 
             // syscall with return value
             if (Match(TokenType.Syscall))
             {
-                var functionName = Consume(TokenType.Identifier, "Expected function name").Lexeme;
+                var functionName = Consume(TokenType.Identifier, "関数名が必要です").Lexeme;
                 var args = new List<Expression>();
 
                 // Parse arguments: s[0] = syscall FuncName, arg1, arg2, ...
@@ -257,10 +257,10 @@ public class Parser
             if (Match(TokenType.LeftParen))
             {
                 var condition = ParseCondition();
-                Consume(TokenType.RightParen, "Expected ')'");
-                Consume(TokenType.Question, "Expected '?'");
+                Consume(TokenType.RightParen, "')' が必要です");
+                Consume(TokenType.Question, "'?' が必要です");
                 var trueValue = ParseExpression();
-                Consume(TokenType.Colon, "Expected ':'");
+                Consume(TokenType.Colon, "':' が必要です");
                 var falseValue = ParseExpression();
 
                 return new TernaryAssignment
@@ -314,7 +314,7 @@ public class Parser
         }
 
         var unexpected = Peek();
-        throw Error($"Unexpected token: {unexpected.Type} ('{unexpected.Lexeme}')");
+        throw Error($"予期しないトークン: {unexpected.Type} ('{unexpected.Lexeme}')");
     }
 
     // ========== 式 ==========
@@ -445,14 +445,14 @@ public class Parser
         else if (Match(TokenType.Const))
             baseReg = BaseRegister.Const;
         else
-            throw Error("Expected base register (sp, data, or const)");
+            throw Error("ベースレジスタ (sp, data, const) が必要です");
 
         // + を読む
-        Consume(TokenType.Plus, "Expected '+' after base register");
+        Consume(TokenType.Plus, "ベースレジスタの後には '+' が必要です");
 
         // offset を読む (静的な数値のみ)
         if (!Check(TokenType.Number))
-            throw Error("Expected static number offset (dynamic offsets not supported in this syntax)");
+            throw Error("静的な数値オフセットが必要です (この構文では動的オフセットは非対応です)");
 
         long offset = ParseNumberValue();
 
@@ -470,7 +470,7 @@ public class Parser
         var type = ParseMemoryType();
         Consume(TokenType.LeftBracket, "Expected '['");
         var address = ParseExpression();
-        Consume(TokenType.RightBracket, "Expected ']'");
+        Consume(TokenType.RightBracket, "']' が必要です");
 
         // シンタックスシュガー: s[x] -> [sp + x], d[x] -> [data + x], c[x] -> [const + x]
         // アドレスが静的な数値の場合のみデシュガー可能
@@ -572,7 +572,7 @@ public class Parser
             TokenType.C16s => MemoryType.C16s,
             TokenType.C32s => MemoryType.C32s,
 
-            _ => throw Error($"Expected memory type, got {token.Type}")
+            _ => throw Error($"メモリ種別が必要ですが {token.Type} でした")
         };
     }
 
@@ -594,7 +594,7 @@ public class Parser
             TokenType.LeftShift => BinaryOperator.LeftShift,
             TokenType.RightShiftS => BinaryOperator.RightShiftS,
             TokenType.RightShiftU => BinaryOperator.RightShiftU,
-            _ => throw Error($"Expected binary operator, got {token.Type}")
+            _ => throw Error($"二項演算子が必要ですが {token.Type} でした")
         };
     }
 
@@ -616,7 +616,7 @@ public class Parser
             TokenType.LeftShiftAssign => BinaryOperator.LeftShift,
             TokenType.RightShiftSAssign => BinaryOperator.RightShiftS,
             TokenType.RightShiftUAssign => BinaryOperator.RightShiftU,
-            _ => throw Error($"Expected compound assignment operator, got {token.Type}")
+            _ => throw Error($"複合代入演算子が必要ですが {token.Type} でした")
         };
     }
 
@@ -635,7 +635,7 @@ public class Parser
             TokenType.GreaterU => ComparisonOperator.GreaterU,
             TokenType.GreaterEqualS => ComparisonOperator.GreaterEqualS,
             TokenType.GreaterEqualU => ComparisonOperator.GreaterEqualU,
-            _ => throw Error($"Expected comparison operator, got {token.Type}")
+            _ => throw Error($"比較演算子が必要ですが {token.Type} でした")
         };
     }
 
@@ -643,7 +643,7 @@ public class Parser
 
     private long ParseNumberValue()
     {
-        var token = Consume(TokenType.Number, "Expected number");
+        var token = Consume(TokenType.Number, "数値が必要です");
         return (long)token.Value!;
     }
 
@@ -725,7 +725,7 @@ public class Parser
     private Exception Error(string message)
     {
         var token = Peek();
-        return new Exception($"Parse error at {token.Line}:{token.Column}: {message}");
+        return new Exception($"構文エラー {token.Line}:{token.Column}: {message}");
     }
 }
 

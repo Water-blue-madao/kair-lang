@@ -205,13 +205,13 @@ public class Lexer
                         return new Token(TokenType.LessEqualS, "<=s", startLine, startColumn);
                     if (Match('u'))
                         return new Token(TokenType.LessEqualU, "<=u", startLine, startColumn);
-                    throw new Exception($"Invalid token at {startLine}:{startColumn}");
+                    throw new Exception($"{startLine}:{startColumn} で無効なトークンです");
                 }
                 if (Match('s'))
                     return new Token(TokenType.LessS, "<s", startLine, startColumn);
                 if (Match('u'))
                     return new Token(TokenType.LessU, "<u", startLine, startColumn);
-                throw new Exception($"Invalid token '<' at {startLine}:{startColumn}");
+                throw new Exception($"'<': {startLine}:{startColumn} で無効なトークンです");
 
             case '>':
                 if (Match('>'))
@@ -236,13 +236,13 @@ public class Lexer
                         return new Token(TokenType.GreaterEqualS, ">=s", startLine, startColumn);
                     if (Match('u'))
                         return new Token(TokenType.GreaterEqualU, ">=u", startLine, startColumn);
-                    throw new Exception($"Invalid token at {startLine}:{startColumn}");
+                    throw new Exception($"{startLine}:{startColumn} で無効なトークンです");
                 }
                 if (Match('s'))
                     return new Token(TokenType.GreaterS, ">s", startLine, startColumn);
                 if (Match('u'))
                     return new Token(TokenType.GreaterU, ">u", startLine, startColumn);
-                throw new Exception($"Invalid token '>' at {startLine}:{startColumn}");
+                throw new Exception($"'>': {startLine}:{startColumn} で無効なトークンです");
 
             case '=':
                 if (Match('='))
@@ -252,12 +252,12 @@ public class Lexer
             case '!':
                 if (Match('='))
                     return new Token(TokenType.NotEqual, "!=", startLine, startColumn);
-                throw new Exception($"Invalid token '!' at {startLine}:{startColumn}");
+                throw new Exception($"'!': {startLine}:{startColumn} で無効なトークンです");
 
             case '@':
                 if (MatchWord("long"))
                     return new Token(TokenType.AtLong, "@long", startLine, startColumn);
-                throw new Exception($"Invalid annotation at {startLine}:{startColumn}");
+                throw new Exception($"{startLine}:{startColumn} で無効なアノテーションです");
 
             default:
                 if (char.IsDigit(c))
@@ -272,7 +272,7 @@ public class Lexer
                     _column--;
                     return ScanIdentifier(startLine, startColumn);
                 }
-                throw new Exception($"Unexpected character '{c}' at {startLine}:{startColumn}");
+                throw new Exception($"予期しない文字 '{c}' (位置: {startLine}:{startColumn})");
         }
     }
 
