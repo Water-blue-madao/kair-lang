@@ -1,0 +1,50 @@
+# Build artifacts
+*.exe
+*.obj
+*.asm
+*.pdb
+*.dll
+
+# Exclude samples folder build artifacts
+samples/*.exe
+samples/*.obj
+samples/*.asm
+
+# .NET build artifacts
+bin/
+obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+*.swp
+*.swo
+
+# Rider
+.idea/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Keep important executables in tools
+!tools/nasm/nasm.exe
+!tools/nasm/ndisasm.exe
+!tools/golink/GoLink.exe
+
+# Keep compiled kair.exe in root (if needed)
+# Uncomment if you want to track the compiled compiler
+# !kair.exe
+tools/subsystem/publish/
