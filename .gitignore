@@ -39,12 +39,15 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-# Keep important executables in tools
-!tools/nasm/nasm.exe
-!tools/nasm/ndisasm.exe
-!tools/golink/GoLink.exe
+# Exclude bundled toolchains (install separately)
+tools/nasm/
+tools/golink/
+x64dbg/
 
-# Keep compiled kair.exe in root (if needed)
-# Uncomment if you want to track the compiled compiler
-# !kair.exe
+# Subsystem publish outputs
 tools/subsystem/publish/
+
+# Keep directory placeholders
+!tools/nasm/.gitkeep
+!tools/golink/.gitkeep
+!x64dbg/.gitkeep

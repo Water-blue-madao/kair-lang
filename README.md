@@ -66,7 +66,22 @@ s[0] = syscall GetStdHandle, -11           // 標準出力ハンドル取得
   - NASM 3.00
   - GoLink 1.0.4.6
 
+## 依存ツールの準備
+
+`build.ps1` は `tools/` 以下に配置された NASM と GoLink を利用します。リポジトリをクローンしたあと、以下の手順でローカルに配置してください。
+
+1. **NASM**
+   - 公式サイト <https://www.nasm.us/pub/nasm/releasebuilds/> から Windows 用 zip を取得します。
+   - 展開した `nasm.exe` と `ndisasm.exe` を `tools/nasm/` に配置します（フォルダが無ければ作成）。
+   - PATH に追加する場合はお好みで設定してください。
+
+2. **GoLink**
+   - Jeremy Gordon 氏のサイト <https://www.godevtool.com/> から GoLink をダウンロードします。
+   - アーカイブ内のファイルをすべて `tools/golink/` に配置します。
+
+これらのディレクトリは Git で無視されます。各開発者がローカルに配置する運用を想定しています。
+
 ## ライセンス
 
-（未定）
+このプロジェクトは [MIT License](LICENSE) の下で配布されます。
 
