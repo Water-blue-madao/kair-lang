@@ -1,0 +1,3 @@
+x64dbg/**/* linguist-vendored
+tools/golink/**/* linguist-vendored
+tools/nasm/**/* linguist-vendored
