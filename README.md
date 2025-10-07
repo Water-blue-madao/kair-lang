@@ -9,7 +9,8 @@
 - 機能不全です。  
 - 検証不全です。  
 - ベータに到達するかもわかりません！  
-claude様のお戯れに過ぎない
+
+claude様のお戯れに過ぎないのさ
 
 ## 依存ツールの準備
 
@@ -35,7 +36,7 @@ samples/fibonacci.exe ; echo "Exit code: $LASTEXITCODE" # 55
 ## ドキュメント
 - **[文法メモ.md](文法メモ.md)** : 言語仕様の詳細（ころころ変わる）
 - **[命令対応表.md](命令対応表.md)** : x64/ARM64での対応パターン
-- **[CLAUDE.md](CLAUDE.md)** : メイン開発者Claude様のお台所
+- **[CLAUDE.md](CLAUDE.md)** : メイン開発者の台所
 
 ## 基本文法
 ```kir
