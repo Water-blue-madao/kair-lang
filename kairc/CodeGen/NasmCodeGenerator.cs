@@ -65,7 +65,7 @@ public class NasmCodeGenerator
         }
         else
         {
-            Emit("    _data_base: resb 4096  ; データ領域として確保");
+            Emit("_data_base:");
             Emit("");
         }
 
@@ -92,7 +92,7 @@ public class NasmCodeGenerator
         }
         else
         {
-            Emit("    _rodata_base: resb 4096  ; 定数データ領域として確保");
+            Emit("_rodata_base:");
             Emit("");
         }
     }
