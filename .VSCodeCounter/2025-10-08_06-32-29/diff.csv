@@ -1,0 +1,11 @@
+"filename", "language", "Markdown", "JSON", "PowerShell", "XML", "C#", "HTML", "comment", "blank", "total"
+"d:\_Projects\CSharp\KAIR\.claude\settings.local.json", "JSON", 0, -127, 0, 0, 0, 0, 0, -3, -130
+"d:\_Projects\CSharp\KAIR\CLAUDE.md", "Markdown", -261, 0, 0, 0, 0, 0, 0, -73, -334
+"d:\_Projects\CSharp\KAIR\README.md", "Markdown", -60, 0, 0, 0, 0, 0, 0, -13, -73
+"d:\_Projects\CSharp\KAIR\build.ps1", "PowerShell", 0, 0, -51, 0, 0, 0, -8, -13, -72
+"d:\_Projects\CSharp\KAIR\tools\Golink\GoLink.htm", "HTML", 0, 0, 0, 0, 0, -878, -9, -59, -946
+"d:\_Projects\CSharp\KAIR\tools\subsystem\FixSubsystem.cs", "C#", 0, 0, 0, 0, -37, 0, -7, -13, -57
+"d:\_Projects\CSharp\KAIR\tools\subsystem\FixSubsystem.csproj", "XML", 0, 0, 0, -8, 0, 0, 0, -1, -9
+"d:\_Projects\CSharp\KAIR\命令対応表.md", "Markdown", -182, 0, 0, 0, 0, 0, 0, -83, -265
+"d:\_Projects\CSharp\KAIR\文法メモ.md", "Markdown", -231, 0, 0, 0, 0, 0, 0, -91, -322
+"Total", "-", -734, -127, -51, -8, -37, -878, -24, -349, -2208

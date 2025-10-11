@@ -168,6 +168,8 @@ public class Condition : IrNode
 
 // ========== 列挙型 ==========
 
+// DEPRECATED: メモリサイズ指定 (s8, s16, s32, mem8, etc.) は廃止予定
+// 別の構文で対応する予定のため、サイズ付きバリアントは将来削除される
 public enum MemoryType
 {
     // ピュアメモリ

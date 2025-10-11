@@ -267,11 +267,23 @@ public class NasmCodeGenerator
         // 代入先 → rax
         EmitLoadExpression(compound.Destination, "rax");
 
-        // ソース → rbx
-        EmitLoadExpression(compound.Source, "rbx");
-
-        // rax op= rbx
-        EmitBinaryOperation(compound.Operator, "rax", "rbx");
+        // シフト演算は rcx を使う必要があるため特別扱い
+        if (compound.Operator == BinaryOperator.LeftShift ||
+            compound.Operator == BinaryOperator.RightShiftS ||
+            compound.Operator == BinaryOperator.RightShiftU)
+        {
+            // ソース → rcx
+            EmitLoadExpression(compound.Source, "rcx");
+            // rax op= rcx
+            EmitBinaryOperation(compound.Operator, "rax", "rcx");
+        }
+        else
+        {
+            // ソース → rbx
+            EmitLoadExpression(compound.Source, "rbx");
+            // rax op= rbx
+            EmitBinaryOperation(compound.Operator, "rax", "rbx");
+        }
 
         // rax → 代入先
         EmitStoreToDestination(compound.Destination, "rax");
@@ -279,8 +291,8 @@ public class NasmCodeGenerator
 
     private void EmitStackPointerUpdate(StackPointerUpdate spUpdate)
     {
-        // KIR: sp += N は「N バイトを確保」(スタックを下方向に拡張)
-        // ASM: sub rsp, N (スタックは下方向に伸びるが、s[] のオフセットは上方向へ正)
+        // KIR: sp -= N は「N バイトを確保」(スタックを下方向に拡張)
+        // ASM: sub rsp, N (アセンブリと同じ記法)
 
         // sp → rax
         Emit("    mov rax, rsp");
@@ -288,14 +300,8 @@ public class NasmCodeGenerator
         // 値 → rbx
         EmitLoadExpression(spUpdate.Value, "rbx");
 
-        // 演算子を反転: sp += N → sub rsp, N
-        var invertedOp = spUpdate.Operator switch
-        {
-            BinaryOperator.Add => BinaryOperator.Sub,
-            BinaryOperator.Sub => BinaryOperator.Add,
-            _ => spUpdate.Operator
-        };
-        EmitBinaryOperation(invertedOp, "rax", "rbx");
+        // そのまま演算
+        EmitBinaryOperation(spUpdate.Operator, "rax", "rbx");
 
         // rax → sp (RSP)
         Emit("    mov rsp, rax");
@@ -600,6 +606,8 @@ public class NasmCodeGenerator
         }
     }
 
+    // DEPRECATED: メモリサイズ指定 (s8, s16, s32, mem8, etc.) は廃止予定
+    // 別の構文で対応する予定のため、この機能は将来削除される
     private int GetMemorySize(MemoryType type)
     {
         return type switch
@@ -620,6 +628,7 @@ public class NasmCodeGenerator
         };
     }
 
+    // DEPRECATED: メモリサイズ指定は廃止予定
     private bool IsSignedMemoryType(MemoryType type)
     {
         return type.ToString().EndsWith("s");

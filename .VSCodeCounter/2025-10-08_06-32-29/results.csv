@@ -1,0 +1,15 @@
+"filename", "language", "C#", "XML", "comment", "blank", "total"
+"d:\_Projects\CSharp\KAIR\kairc\AssemblerHelper.cs", "C#", 9, 0, 2, 3, 14
+"d:\_Projects\CSharp\KAIR\kairc\CodeGen\NasmCodeGenerator.cs", "C#", 577, 0, 72, 107, 756
+"d:\_Projects\CSharp\KAIR\kairc\CommandLineParser.cs", "C#", 157, 0, 11, 27, 195
+"d:\_Projects\CSharp\KAIR\kairc\Compiler.cs", "C#", 82, 0, 11, 24, 117
+"d:\_Projects\CSharp\KAIR\kairc\IR\IrNode.cs", "C#", 153, 0, 28, 41, 222
+"d:\_Projects\CSharp\KAIR\kairc\Lexer\Lexer.cs", "C#", 345, 0, 5, 62, 412
+"d:\_Projects\CSharp\KAIR\kairc\Lexer\Token.cs", "C#", 23, 0, 0, 5, 28
+"d:\_Projects\CSharp\KAIR\kairc\Lexer\TokenType.cs", "C#", 99, 0, 10, 15, 124
+"d:\_Projects\CSharp\KAIR\kairc\LinkerHelper.cs", "C#", 9, 0, 6, 3, 18
+"d:\_Projects\CSharp\KAIR\kairc\Parser\Parser.cs", "C#", 581, 0, 49, 102, 732
+"d:\_Projects\CSharp\KAIR\kairc\ProcessHelper.cs", "C#", 36, 0, 10, 12, 58
+"d:\_Projects\CSharp\KAIR\kairc\Program.cs", "C#", 53, 0, 0, 5, 58
+"d:\_Projects\CSharp\KAIR\kairc\kairc.csproj", "XML", 0, 23, 2, 0, 25
+"Total", "-", 2124, 23, 206, 406, 2759

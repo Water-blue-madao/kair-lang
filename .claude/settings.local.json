@@ -119,11 +119,10 @@
       "Bash(./workspace/test-all-operators.exe)",
       "Bash(git restore:*)",
       "Bash(git mv:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
   }
 }
-
-

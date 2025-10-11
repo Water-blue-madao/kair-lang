@@ -1,0 +1,43 @@
+Date : 2025-10-08 06:32:29
+Directory : d:\_Projects\CSharp\KAIR\kairc
+Total : 13 files,  2147 codes, 206 comments, 406 blanks, all 2759 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| C#       |         12 |      2,124 |        204 |        406 |      2,734 |
+| XML      |          1 |         23 |          2 |          0 |         25 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                        | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                           |         13 |      2,147 |        206 |        406 |      2,759 |
+| . (Files)                                                   |          7 |        369 |         42 |         74 |        485 |
+| CodeGen                                                     |          1 |        577 |         72 |        107 |        756 |
+| IR                                                          |          1 |        153 |         28 |         41 |        222 |
+| Lexer                                                       |          3 |        467 |         15 |         82 |        564 |
+| Parser                                                      |          1 |        581 |         49 |        102 |        732 |
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                    | language | code       | comment    | blank      | total      |
++-------------------------------------------------------------+----------+------------+------------+------------+------------+
+| d:\_Projects\CSharp\KAIR\kairc\AssemblerHelper.cs           | C#       |          9 |          2 |          3 |         14 |
+| d:\_Projects\CSharp\KAIR\kairc\CodeGen\NasmCodeGenerator.cs | C#       |        577 |         72 |        107 |        756 |
+| d:\_Projects\CSharp\KAIR\kairc\CommandLineParser.cs         | C#       |        157 |         11 |         27 |        195 |
+| d:\_Projects\CSharp\KAIR\kairc\Compiler.cs                  | C#       |         82 |         11 |         24 |        117 |
+| d:\_Projects\CSharp\KAIR\kairc\IR\IrNode.cs                 | C#       |        153 |         28 |         41 |        222 |
+| d:\_Projects\CSharp\KAIR\kairc\Lexer\Lexer.cs               | C#       |        345 |          5 |         62 |        412 |
+| d:\_Projects\CSharp\KAIR\kairc\Lexer\Token.cs               | C#       |         23 |          0 |          5 |         28 |
+| d:\_Projects\CSharp\KAIR\kairc\Lexer\TokenType.cs           | C#       |         99 |         10 |         15 |        124 |
+| d:\_Projects\CSharp\KAIR\kairc\LinkerHelper.cs              | C#       |          9 |          6 |          3 |         18 |
+| d:\_Projects\CSharp\KAIR\kairc\Parser\Parser.cs             | C#       |        581 |         49 |        102 |        732 |
+| d:\_Projects\CSharp\KAIR\kairc\ProcessHelper.cs             | C#       |         36 |         10 |         12 |         58 |
+| d:\_Projects\CSharp\KAIR\kairc\Program.cs                   | C#       |         53 |          0 |          5 |         58 |
+| d:\_Projects\CSharp\KAIR\kairc\kairc.csproj                 | XML      |         23 |          2 |          0 |         25 |
+| Total                                                       |          |      2,147 |        206 |        406 |      2,759 |
++-------------------------------------------------------------+----------+------------+------------+------------+------------+

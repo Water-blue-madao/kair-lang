@@ -16,28 +16,25 @@
 // 標準出力に "Hello, World!" が表示され、Exit code: 0
 //==============================================================================
 
-// Write "Hello, World!\r\n" to data section (15 bytes)
+// データセクションに "Hello, World!\r\n" を書き込む（15バイト）
 // H e l l o ,   W = 0x57202C6F6C6C6548 (little-endian, 8 bytes)
 [data + 0] = 0x57202C6F6C6C6548
 // o r l d ! \r \n = 0x0A0D21646C726F (little-endian, 7 bytes padded to 8)
 [data + 8] = 0x0A0D21646C726F
 
-sp += 40
-
-// Get stdout handle
+// 標準出力ハンドルを取得
 align 16
 s[0] = syscall GetStdHandle, -11
 
-// Prepare WriteFile arguments
+// WriteFile の引数を準備
 // WriteFile(handle, buffer, length, &bytes_written, NULL)
-// Need to pass ADDRESS of buffer and bytes_written location
-s[8] = data      // s[8] = address of data section base (buffer address)
+// バッファのアドレスと bytes_written の格納場所（アドレス）を、事前に計算して渡す必要がある
+s[8] = data       // s[8] = データセクション先頭のアドレス（バッファのアドレス）
 s[16] = data
-s[16] += 32      // s[16] = address of d[32] (bytes_written location)
+s[16] += 32      // s[16] = d[32] のアドレス（bytes_written の格納場所）
 
 align 16
 syscall WriteFile, s[0], s[8], 15, s[16], 0
 
-// Exit
-align 16
-syscall ExitProcess, 0
+s[0]=42
+goto END

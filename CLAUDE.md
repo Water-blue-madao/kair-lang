@@ -89,8 +89,9 @@ dotnet run --project tools/subsystem/FixSubsystem.csproj -- output.exe  # CRITIC
 **Native RSP Usage**
 - `sp` in KIR directly maps to native RSP (not a virtual register)
 - `s[offset]` compiles to `[rsp + offset]`
-- Internal implementation MUST NOT modify RSP except for explicit `sp +=` operations
+- Internal implementation MUST NOT modify RSP except for explicit `sp += / sp -=` operations
 - This is why `push`/`pop` are forbidden in code generation
+- **Stack allocation**: `sp -= N` decreases RSP (stack grows downward)
 
 **Memory Access Unification**
 - Single syntax: `[base + offset]` where base ∈ {sp, data, const}
@@ -227,6 +228,20 @@ syscall WriteFile, handle, data, length, s[8], 0  // Pass address directly
 - Compiles to `lea reg, [rel _data_base]` or `lea reg, [rel _rodata_base]`
 - **CRITICAL**: `d[0]` loads the **value** at data+0, `data` loads the **address** of data section
 
+**Stack Operations**:
+```kir
+sp -= 40         // Allocate 40 bytes on stack (decreases RSP)
+sp += 16         // Deallocate 16 bytes (increases RSP)
+```
+
+**Important for Assembly Beginners**: Stack grows downward (toward lower addresses) in x64/ARM64. To allocate stack space, you **decrease** sp. KIR uses the same notation as assembly: `sp -= N` compiles to `sub rsp, N`.
+
+**Alignment** (IMPORTANT for syscalls):
+```kir
+align 16         // Align stack to 16-byte boundary (required before syscalls on Windows x64)
+align 8          // Align stack to 8-byte boundary
+```
+
 **Data Initialization** (top-level only):
 ```kir
 [data + 0] = 0x48656C6C6F  // "Hello" in little-endian
@@ -235,11 +250,51 @@ syscall WriteFile, handle, data, length, s[8], 0  // Pass address directly
 
 **Operations**: `+`, `-`, `*`, `/s`, `/u`, `%s`, `%u`, `&`, `|`, `^`, `<<`, `>>s`, `>>u`, `-`, `~`
 
+**Compound Assignment**: `+=`, `-=`, `*=`, `/s=`, `&=`, `<<=`, `>>s=`, etc.
+
+**Conditional Assignment** (implemented but not in samples):
+```kir
+s[0] = 10 if s[8] >s 0                  // Assign only if condition is true
+```
+
+**Ternary Operator** (implemented but not in samples):
+```kir
+s[0] = (s[8] >s 0) ? 100 : 200         // Conditional value selection
+```
+
+**Syntax Constraints** (CRITICAL):
+- **Each statement represents exactly one operation** - KIR syntax maps almost 1:1 to assembly instructions
+- Expression composition is not supported - cannot combine operations or use computation results directly
+- Examples of what's NOT allowed:
+  ```kir
+  s[0] = (s[8] + 10) * 2                      // NO: cannot combine operations
+  syscall ExitProcess, s[0] + 1               // NO: cannot compute in arguments
+  syscall WriteFile, h, data + 8, len, ptr, 0 // NO: data + 8 not allowed
+  s[0] = ((s[8] > 0) ? 10 : 20) + 5          // NO: cannot use ternary result directly
+  ```
+- Correct approach (store intermediate results explicitly):
+  ```kir
+  s[0] = s[8] + 10
+  s[0] *= 2
+
+  s[0] += 1
+  syscall ExitProcess, s[0]
+
+  s[16] = data
+  s[16] += 8
+  syscall WriteFile, h, s[16], len, ptr, 0
+
+  s[0] = (s[8] > 0) ? 10 : 20
+  s[0] += 5
+  ```
+
 **Control Flow**: `goto label`, `goto label if condition`
 
 **Syscalls**:
 ```kir
+align 16
 syscall ExitProcess, 0
+align 16
 s[0] = syscall GetStdHandle, -11
 ```
 

@@ -14,19 +14,17 @@
 // Exit code: 85
 //==============================================================================
 
-sp += 40
-
-// result accumulator
+// 結果を蓄積するレジスタ
 s[0] = 100
 
-// outer loop counter
+// 外側ループのカウンタ
 s[8] = 5
 
-// inner loop iteration count (constant)
+// 内側ループの反復回数（定数）
 s[16] = 3
 
 # outer_loop
-// reset inner counter
+// 内側ループ用のカウンタをリセット
 s[24] = s[16]
 
 # inner_loop
