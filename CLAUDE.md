@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**KAIR (Kernel Assembly IR)** is a cross-platform assembly abstraction layer compiler. It compiles `.kir` files (a minimal intermediate representation language) to native x64 assembly, then to executables via NASM and GoLink.
+**KAIR (Kernel Assembly IR)** is a cross-platform assembly abstraction layer compiler. It compiles `.kir` files (a minimal intermediate representation language) to native x64 assembly, then to executables via **LLVM toolchain** (llvm-mc + lld-link).
 
 **Current Status**: Windows x64 fully supported with naive implementation. All operations follow load→compute→store pattern for maximum reliability.
 
@@ -17,38 +17,37 @@ dotnet build KAIR/kairc/kairc.csproj -c Debug -r win-x64 --self-contained false
 
 ### Compiling KIR Programs
 ```powershell
-# One-command build (recommended) - ONLY in workspace/
-./build.ps1 workspace/test-feature.kir
+# Build only (default)
+./build.ps1 samples/fibonacci.kir
 
-# IMPORTANT: build.ps1 enforces workspace/ directory
-# - samples/ contains final .kir files only (no .exe/.obj/.asm)
-# - workspace/ is for testing (artifacts allowed, gitignored)
-# - Build script cleans all artifacts before building (avoids cache issues)
-# - ASM files are kept for debugging
+# Build and run with exit code display
+./build.ps1 samples/fibonacci.kir -Run
+
+# IMPORTANT: Artifacts always go to workspace/ directory
+# - samples/ contains ONLY .kir source files
+# - workspace/ contains all build artifacts (.s, .obj, .exe)
+# - Build script automatically cleans old artifacts (avoids stale cache issues)
 
 # Manual steps (for debugging)
-dotnet run --project KAIR/kairc/kairc.csproj -- input.kir -o output.asm --emit-comments
-tools/nasm/nasm.exe -f win64 output.asm -o output.obj
-tools/golink/GoLink.exe /console kernel32.dll output.obj /fo output.exe
-dotnet run --project tools/subsystem/FixSubsystem.csproj -- output.exe  # CRITICAL!
+dotnet run --project kairc/kairc.csproj -- input.kir -o output.s --emit-comments
+tools/llvm/bin/llvm-mc.exe --triple=x86_64-pc-windows-msvc --output-asm-variant=1 --filetype=obj output.s -o output.obj
+tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:console /entry:Start /out:output.exe
 ```
 
 ### Running Tests
 ```powershell
-# Build and test in one line (PowerShell uses ';' not '&&')
-./build.ps1 workspace/test-feature.kir ; ./workspace/test-feature.exe ; echo "Exit code: $LASTEXITCODE"
+# Simple one-liner with -Run flag
+./build.ps1 workspace/test-feature.kir -Run  # Builds, runs, and shows exit code
 
-# Examples:
-./build.ps1 workspace/test-operators.kir ; ./workspace/test-operators.exe ; echo "Exit code: $LASTEXITCODE"  # Expected: 31
+# Test all samples
+./workspace/test-all.ps1
 ```
-
-**CRITICAL**: Always run `FixSubsystem` on executables produced by GoLink. Without it, programs won't return exit codes correctly in PowerShell (GoLink produces GUI subsystem by default despite `/console` flag).
 
 ## Architecture
 
 ### Compilation Pipeline
 ```
-.kir → Lexer → Parser → IR → CodeGen → .asm → NASM → .obj → GoLink → FixSubsystem → .exe
+.kir → Lexer → Parser → IR → CodeGen → .s (LLVM MC) → llvm-mc → .obj → lld-link → .exe
 ```
 
 ### Core Components
@@ -75,14 +74,15 @@ dotnet run --project tools/subsystem/FixSubsystem.csproj -- output.exe  # CRITIC
   - `BinaryOperation`, `UnaryOperation`: Arithmetic/logical ops
   - `Syscall`: Windows API calls with alignment
 
-**CodeGen** (`KAIR/kairc/CodeGen/NasmCodeGenerator.cs`)
-- Generates NASM x64 assembly
+**CodeGen** (`kairc/CodeGen/LlvmCodeGenerator.cs`)
+- Generates LLVM MC assembly (Intel syntax with `.intel_syntax noprefix`)
 - **Completely naive**: Each operation is load→compute→store with no optimization
 - **Critical constraints**:
   - NEVER use `push`/`pop` for temporary storage (changes RSP, breaks `[rsp + offset]` addressing)
   - Use `r8` register for temporary values instead
   - Shift operations must use `rcx` (hardcoded by x64 ISA to use `cl`)
   - All syscalls require 16-byte stack alignment before `call`
+  - **RIP-relative addressing REQUIRED** for data/const section access (see below)
 
 ### Key Design Decisions
 
@@ -117,11 +117,19 @@ dotnet run --project tools/subsystem/FixSubsystem.csproj -- output.exe  # CRITIC
   call Function       ; RSP % 16 == 0 here
   ```
 
-### GoLink Quirks
-- `/console` flag doesn't work (bug in GoLink 1.0.4.6)
-- Always produces GUI subsystem (2), must fix to Console (3) with FixSubsystem
-- Import stubs are code, not pointers: use `call ExitProcess` NOT `call [ExitProcess]`
-- `section .data` required even if empty (else Import Directory missing)
+### LLVM Toolchain Specifics
+
+**RIP-Relative Addressing (CRITICAL)**
+- LLVM MC on Windows x64 requires RIP-relative addressing for data/const sections
+- Direct addressing like `mov rax, [_data_base + 0]` will **crash** (0xC0000005)
+- Must use: `lea r10, [rip + _data_base]; mov rax, [r10 + 0]`
+- Stack (`rsp`) can use direct addressing: `mov rax, [rsp + 0]` is OK
+
+**lld-link**
+- Windows PE/COFF linker from LLVM
+- Syntax: `/subsystem:console /entry:Start /out:output.exe`
+- Requires import libraries (.lib) unlike GoLink which could link DLLs directly
+- Correctly sets subsystem (no FixSubsystem needed)
 
 ### Register Usage
 - Volatile (caller-saved): RAX, RCX, RDX, R8-R11
@@ -385,4 +393,34 @@ All sample `.kir` files must follow this format to maintain consistency and clar
 6. **Committing workspace/ artifacts**: Only `.kir` files should be in git
 7. **Confusing `d[0]` vs `data`**: `d[0]` = value at data+0, `data` = address of data section base
 
+
+
+## Important Lessons Learned
+
+### Build Artifact Management
+**CRITICAL: Always clean artifacts before testing**
+- Old build artifacts can cause false test results
+- `build.ps1` automatically cleans `.s`, `.obj`, `.exe` before building
+- This prevents issues with stale object files that worked with old code
+
+### Testing Methodology
+When debugging assembly issues:
+1. Start with minimal working case (e.g., `exit(42)`)
+2. Gradually add complexity to isolate the problem
+3. Compare working vs non-working assembly side-by-side
+4. Test in a clean environment (remove all artifacts first)
+
+### LLVM MC vs NASM Differences
+- **Comment syntax**: NASM uses `;`, LLVM MC uses `#`
+- **Data section access**: NASM allows direct `[symbol]`, LLVM MC requires RIP-relative
+- **Directives**: NASM `bits 64`/`section .data`, LLVM MC `.intel_syntax`/`.section .data`
+- **Assembler**: NASM is x86-specific, LLVM MC is cross-platform (x64/ARM64/etc)
+
+### Debugging Checklist
+When a program crashes (0xC0000005):
+1. Check if data/const section is accessed with RIP-relative addressing
+2. Verify stack alignment before `call` instructions
+3. Ensure no `push`/`pop` between stack-relative accesses
+4. Confirm artifacts are fresh (not cached from previous build)
+5. Test with minimal reproduction case
 

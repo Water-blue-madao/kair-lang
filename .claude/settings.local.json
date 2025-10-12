@@ -122,7 +122,14 @@
       "Bash(git diff:*)",
       "Bash(python:*)",
       "Bash(./build.ps1 workspace/test-no-reserve.kir)",
-      "Bash(./workspace/test-no-reserve.exe)"
+      "Bash(./workspace/test-no-reserve.exe)",
+      "Bash(tools/clang+llvm-21.1.3-x86_64-pc-windows-msvc/bin/llvm-mc.exe:*)",
+      "Bash(tools/clang+llvm-21.1.3-x86_64-pc-windows-msvc/bin/llvm-dlltool.exe:*)",
+      "Bash(tools/clang+llvm-21.1.3-x86_64-pc-windows-msvc/bin/lld-link.exe:*)",
+      "Bash(tools/llvm-minimal/bin/llvm-mc.exe:*)",
+      "Bash(tools/llvm-minimal/bin/lld-link.exe:*)",
+      "Bash(tools/llvm/bin/llvm-mc.exe:*)",
+      "Bash(tools/llvm/bin/lld-link.exe:*)"
     ],
     "deny": [],
     "ask": []

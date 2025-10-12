@@ -14,20 +14,26 @@ claude様のお戯れに過ぎないのさ
 
 ## 依存ツールの準備
 
-- **.NET 8.0** (<https://dotnet.microsoft.com/ja-jp/download/dotnet/8.0>)  
-- **NASM** (<https://www.nasm.us/pub/nasm/releasebuilds/>)  
-  `tools/nasm/` 直下にexeが来るように展開。
--  **GoLink** (<https://www.godevtool.com/>のLinkerって項 )  
-  `tools/Golink/` 直下にexeが来るように展開。
-  
-  (単体ではkirファイルからアセンブリを吐くだけなので、そのまま動かすには別途アセンブリのコンパイラ`NASM`とリンカ`GoLink`が要ります。)
+- **.NET 8.0** (<https://dotnet.microsoft.com/ja-jp/download/dotnet/8.0>)
+- **LLVM Toolchain** (llvm-mc, lld-link)
+  公式リリースから入手: <https://github.com/llvm/llvm-project/releases>
+  `tools/llvm/bin/` に以下のファイルを配置（約100MB、DLL不要）:
+  - `llvm-mc.exe` (アセンブラ)
+  - `lld-link.exe` (リンカ)
+  - `llvm-dlltool.exe` (Import library生成用)
+
+  `tools/llvm/lib/kernel32.lib` も必要（llvm-dlltoolで生成可能）
 
 ## クイックスタート
 ```powershell
-# dotnet runして、kir->asm->obj->exe->サブシステム変更まで
+# ビルドのみ
 ./build.ps1 samples/fibonacci.kir
-# 実行して終了コードを見てみる
-samples/fibonacci.exe ; echo "Exit code: $LASTEXITCODE" # 55
+
+# ビルド＆実行＆終了コード表示を一発で
+./build.ps1 samples/fibonacci.kir -Run  # Exit code: 55
+
+# 全サンプルをテスト
+./workspace/test-all.ps1
 
 # 同じノリで`samples/` からkirを幾つか試せます。解説コメント付き
 # Win11 + intelしか試してない

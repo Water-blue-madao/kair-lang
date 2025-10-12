@@ -21,8 +21,9 @@ public class CompilerOptions
     public required string OutputFile { get; set; }
     public CompileMode Mode { get; set; }
     public TargetPlatform? Target { get; set; }
-    public string NasmPath { get; set; } = "tools/nasm/nasm.exe";
-    public string GoLinkPath { get; set; } = "tools/golink/GoLink.exe";
+    public string LlvmMcPath { get; set; } = "tools/llvm/bin/llvm-mc.exe";
+    public string LldLinkPath { get; set; } = "tools/llvm/bin/lld-link.exe";
+    public string Kernel32LibPath { get; set; } = "tools/llvm/lib/kernel32.lib";
     public bool EmitComments { get; set; } = false;
 }
 
@@ -37,8 +38,9 @@ public static class CommandLineParser
         string? outputFile = null;
         string? targetStr = null;
         CompileMode? mode = null;
-        string nasmPath = "tools/nasm/nasm.exe";
-        string golinkPath = "tools/golink/GoLink.exe";
+        string llvmMcPath = "tools/llvm/bin/llvm-mc.exe";
+        string lldLinkPath = "tools/llvm/bin/lld-link.exe";
+        string kernel32LibPath = "tools/llvm/lib/kernel32.lib";
         bool emitComments = false;
 
         // サブコマンドを判定: "build" は実行ファイル、サブコマンドなしはアセンブリ出力
@@ -79,16 +81,22 @@ public static class CommandLineParser
                     mode = CompileMode.AsmToExe;
                     break;
 
-                case "--nasm":
+                case "--llvm-mc":
                     if (i + 1 >= args.Length)
-                        throw new ArgumentException("--nasm の後にパスが指定されていません");
-                    nasmPath = args[++i];
+                        throw new ArgumentException("--llvm-mc の後にパスが指定されていません");
+                    llvmMcPath = args[++i];
                     break;
 
-                case "--golink":
+                case "--lld-link":
                     if (i + 1 >= args.Length)
-                        throw new ArgumentException("--golink の後にパスが指定されていません");
-                    golinkPath = args[++i];
+                        throw new ArgumentException("--lld-link の後にパスが指定されていません");
+                    lldLinkPath = args[++i];
+                    break;
+
+                case "--kernel32-lib":
+                    if (i + 1 >= args.Length)
+                        throw new ArgumentException("--kernel32-lib の後にパスが指定されていません");
+                    kernel32LibPath = args[++i];
                     break;
 
                 case "--emit-comments":
@@ -151,8 +159,9 @@ public static class CommandLineParser
             OutputFile = outputFile,
             Mode = mode.Value,
             Target = target,
-            NasmPath = nasmPath,
-            GoLinkPath = golinkPath,
+            LlvmMcPath = llvmMcPath,
+            LldLinkPath = lldLinkPath,
+            Kernel32LibPath = kernel32LibPath,
             EmitComments = emitComments
         };
     }

@@ -42,7 +42,7 @@ public class Compiler
     {
         Console.WriteLine($"Compiling {_options.InputFile} to {_options.OutputFile}...");
 
-        // Asm IR → 内部IR → NASM
+        // KIR → 内部IR → LLVM MC Assembly
         var source = File.ReadAllText(_options.InputFile);
         var asmCode = CompileSourceToAsm(source);
         File.WriteAllText(_options.OutputFile, asmCode);
@@ -86,8 +86,8 @@ public class Compiler
         var parser = new Parser.Parser(tokens, sourceLines);
         var program = parser.Parse();
 
-        // コード生成器
-        var codeGen = new NasmCodeGenerator(program, _options.EmitComments);
+        // コード生成器 (LLVM MC構文)
+        var codeGen = new LlvmCodeGenerator(program, _options.EmitComments);
         return codeGen.Generate();
     }
 
@@ -99,11 +99,11 @@ public class Compiler
 
         try
         {
-            // ステップ1: NASM -> OBJ
-            AssemblerHelper.RunNasm(_options.NasmPath, asmFile, objFile);
+            // ステップ1: llvm-mc -> OBJ
+            LlvmAssemblerHelper.RunLlvmMc(_options.LlvmMcPath, asmFile, objFile);
 
-            // ステップ2: OBJ -> EXE
-            LinkerHelper.RunGoLink(_options.GoLinkPath, objFile, exeFile);
+            // ステップ2: lld-link -> EXE
+            LlvmLinkerHelper.RunLldLink(_options.LldLinkPath, objFile, exeFile, _options.Kernel32LibPath);
         }
         finally
         {
