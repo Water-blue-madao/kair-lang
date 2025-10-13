@@ -129,7 +129,8 @@
       "Bash(tools/llvm-minimal/bin/llvm-mc.exe:*)",
       "Bash(tools/llvm-minimal/bin/lld-link.exe:*)",
       "Bash(tools/llvm/bin/llvm-mc.exe:*)",
-      "Bash(tools/llvm/bin/lld-link.exe:*)"
+      "Bash(tools/llvm/bin/lld-link.exe:*)",
+      "Bash(printf '.section .data\\n.ascii \"\"\"\"Hello\\\\n\"\"\"\"')"
     ],
     "deny": [],
     "ask": []

@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Building the Compiler
 ```bash
-dotnet build KAIR/kairc/kairc.csproj -c Debug -r win-x64 --self-contained false
+dotnet build kairc/kairc.csproj -c Debug -r win-x64 --self-contained false
 ```
 
 ### Compiling KIR Programs
@@ -52,12 +52,12 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
 
 ### Core Components
 
-**Lexer** (`KAIR/kairc/Lexer/`)
+**Lexer** (`kairc/Lexer/`)
 - Tokenizes KIR source into tokens
 - Handles comments (`//`, `/* */`), keywords, operators, literals
 - TokenType.cs defines all token types
 
-**Parser** (`KAIR/kairc/Parser/Parser.cs`)
+**Parser** (`kairc/Parser/Parser.cs`)
 - Recursive descent parser
 - Produces IR tree (IrNode)
 - Key parsing patterns:
@@ -65,7 +65,7 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
   - **Syntax sugar desugaring**: `s[x]` → `[sp + x]`, `d[x]` → `[data + x]`, `c[x]` → `[const + x]`
   - Statement parsing uses explicit lookahead (`Check()` / `Peek()`)
 
-**IR** (`KAIR/kairc/IR/IrNode.cs`)
+**IR** (`kairc/IR/IrNode.cs`)
 - Defines IR node types (statements, expressions)
 - Key nodes:
   - `BaseOffsetAccess`: Unified memory access `[base + offset]`
@@ -143,12 +143,12 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
 2. Add token type in `Lexer/TokenType.cs`
 3. Add lexer mapping in `Lexer/Lexer.cs`
 4. Add parser case in `Parser/Parser.cs::ParseBinaryOperator()`
-5. Add code generation in `CodeGen/NasmCodeGenerator.cs::EmitBinaryOperation()`
+5. Add code generation in `CodeGen/LlvmCodeGenerator.cs::EmitBinaryOperation()`
 
 ### Adding New IR Nodes
 1. Define node class in `IR/IrNode.cs` (inherit from `Statement` or `Expression`)
 2. Add parsing logic in `Parser/Parser.cs`
-3. Add code generation case in `NasmCodeGenerator.cs::EmitStatement()` or `EmitLoadExpression()`
+3. Add code generation case in `LlvmCodeGenerator.cs::EmitStatement()` or `EmitLoadExpression()`
 
 ### Modifying Code Generation
 - Always check that changes don't introduce `push`/`pop` (breaks RSP-relative addressing)
@@ -158,18 +158,18 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
 ## File Organization
 
 ```
-KAIR/kairc/
+kairc/
 ├── Lexer/           # Tokenization
 ├── Parser/          # Syntax analysis → IR
 ├── IR/              # IR node definitions
-├── CodeGen/         # IR → NASM assembly
-├── ProcessHelper.cs # External tool execution (shared by NASM/GoLink)
+├── CodeGen/         # IR → LLVM MC assembly
+├── ProcessHelper.cs # External tool execution (shared by LLVM tools)
 ├── Compiler.cs      # Orchestrates pipeline
 └── Program.cs       # Entry point, CLI
 
 workspace/           # Test files (.kir only, binaries gitignored)
 samples/             # Example programs
-tools/               # NASM, GoLink binaries
+tools/llvm/          # LLVM binaries (llvm-mc, lld-link)
 build.ps1            # One-command build script
 
 文法メモ.md               # Language spec (changes frequently)
@@ -212,10 +212,23 @@ Exit code verification in PowerShell:
 **Example:**
 ```
 AI: Please run this command and report the results:
-    ./build.ps1 workspace/test-feature.kir ; ./workspace/test-feature.exe ; echo "Exit code: $LASTEXITCODE"
+    ./build.ps1 workspace/test-feature.kir -Run
 User: [reports output and exit code]
 AI: [analyzes and continues work]
 ```
+
+**Critical Testing Reminders:**
+- **All artifacts must go to workspace/**: Never test files in `samples/` during development
+- **Use build.ps1 with -Run flag**: Command already bundles build + execute + exit code display
+- **Always request user verification**: Never assume tests passed without user confirmation
+
+**When Tests Fail or Behave Unexpectedly:**
+1. **Reconsider the logic**: Review the implementation approach
+2. **Incremental debugging**: Start from working code, gradually add complexity until it breaks
+3. **Compare assembly output**: Use `--emit-comments` and compare working vs broken `.s` files side-by-side
+4. **Verify with external tools**: Consider testing equivalent operations in Python or other languages
+5. **Check for stale artifacts**: Ensure build.ps1 cleaned old files (it should, but verify if suspicious)
+6. **Minimal reproduction**: Strip down to simplest case that reproduces the issue
 
 ## Important Context Files
 
@@ -233,7 +246,7 @@ s[8] += 32          // Calculate offset address
 syscall WriteFile, handle, data, length, s[8], 0  // Pass address directly
 ```
 - `data` and `const` can be used as address values
-- Compiles to `lea reg, [rel _data_base]` or `lea reg, [rel _rodata_base]`
+- Compiles to `lea reg, [rip + _data_base]` or `lea reg, [rip + _rodata_base]`
 - **CRITICAL**: `d[0]` loads the **value** at data+0, `data` loads the **address** of data section
 
 **Stack Operations**:
@@ -385,11 +398,11 @@ All sample `.kir` files must follow this format to maintain consistency and clar
 
 ## Common Pitfalls
 
-1. **Forgetting FixSubsystem**: Executables won't return exit codes properly
+1. **Using direct data access instead of RIP-relative**: `mov rax, [_data_base]` will crash, must use `lea r10, [rip + _data_base]; mov rax, [r10]`
 2. **Using `push`/`pop` in codegen**: Breaks `[rsp + offset]` addressing
 3. **Not aligning stack before syscalls**: Causes 0xC0000005 (ACCESS_VIOLATION)
-4. **Using `call [Function]` instead of `call Function`**: GoLink import stubs are code, not pointers
-5. **Stale build artifacts**: Build script now auto-cleans before building
+4. **Using `[rel label]` instead of `[rip + label]`**: LLVM MC syntax requires `rip +`, not just `rel`
+5. **Stale build artifacts**: Build script auto-cleans before building, but manual testing may need extra cleanup
 6. **Committing workspace/ artifacts**: Only `.kir` files should be in git
 7. **Confusing `d[0]` vs `data`**: `d[0]` = value at data+0, `data` = address of data section base
 
