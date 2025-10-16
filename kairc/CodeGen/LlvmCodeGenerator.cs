@@ -214,7 +214,7 @@ public class LlvmCodeGenerator
         }
         else
         {
-            // Data/Const: RIP-relative addressing required
+            // Data/Const: RIP-relative direct memory access
             string baseLabel = access.Base switch
             {
                 BaseRegister.Data => "_data_base",
@@ -222,46 +222,56 @@ public class LlvmCodeGenerator
                 _ => throw new NotImplementedException($"ベースレジスタ {access.Base} は未対応です")
             };
 
-            // Use temporary register for RIP-relative addressing
-            Emit($"    lea r10, [rip + {baseLabel}]");
-            Emit($"    mov [r10 + {access.Offset}], {sourceReg}");
+            // Direct RIP-relative memory access (LLVM MC supports this)
+            Emit($"    mov [rip + {baseLabel} + {access.Offset}], {sourceReg}");
         }
     }
 
     private void EmitConditionalAssignment(ConditionalAssignment condAssign)
     {
-        var skipLabel = GenerateLabel("skip_assign");
+        // Optimized: Use cmov to avoid branching
+        // Strategy: Load new value to rax, then cmov old value if condition is false
 
-        // 条件を評価し、成り立たない場合はスキップ
-        EmitConditionJump(condAssign.Condition, skipLabel, invert: true);
-
-        // ソース → rax
+        // Load new value (置換値) → rax
         EmitLoadExpression(condAssign.Source, "rax");
 
-        // rax → 代入先
-        EmitStoreToDestination(condAssign.Destination, "rax");
+        // Load old value (元の値) → rbx
+        EmitLoadExpression(condAssign.Destination, "rbx");
 
-        Emit($"{skipLabel}:");
+        // Compare for condition (left and right need temp registers)
+        EmitLoadExpression(condAssign.Condition.Left, "r12");
+        EmitLoadExpression(condAssign.Condition.Right, "r13");
+        Emit("    cmp r12, r13");
+
+        // If condition is FALSE, restore old value (反対条件で元値へcmov)
+        string invertedCmov = GetCmovInstruction(condAssign.Condition.Operator, invert: true);
+        Emit($"    {invertedCmov} rax, rbx  # Keep old value if condition is false");
+
+        // Store result
+        EmitStoreToDestination(condAssign.Destination, "rax");
     }
 
     private void EmitTernaryAssignment(TernaryAssignment ternary)
     {
-        var falseLabel = GenerateLabel("ternary_false");
-        var endLabel = GenerateLabel("ternary_end");
+        // Optimized: Use cmov to avoid branching
+        // Strategy: Load true value to rax, false value to rbx, then cmov false if condition is false
 
-        // 条件を評価
-        EmitConditionJump(ternary.Condition, falseLabel, invert: true);
-
-        // 真の場合の値 → rax
+        // Load true value → rax
         EmitLoadExpression(ternary.TrueValue, "rax");
-        Emit($"    jmp {endLabel}");
 
-        Emit($"{falseLabel}:");
-        // 偽の場合の値 → rax
-        EmitLoadExpression(ternary.FalseValue, "rax");
+        // Load false value → rbx
+        EmitLoadExpression(ternary.FalseValue, "rbx");
 
-        Emit($"{endLabel}:");
-        // rax → 代入先
+        // Compare for condition
+        EmitLoadExpression(ternary.Condition.Left, "r12");
+        EmitLoadExpression(ternary.Condition.Right, "r13");
+        Emit("    cmp r12, r13");
+
+        // If condition is FALSE, select false value (反対条件でfalse値を選択)
+        string invertedCmov = GetCmovInstruction(ternary.Condition.Operator, invert: true);
+        Emit($"    {invertedCmov} rax, rbx  # Select false value if condition is false");
+
+        // Store result
         EmitStoreToDestination(ternary.Destination, "rax");
     }
 
@@ -280,12 +290,66 @@ public class LlvmCodeGenerator
             // rax op= rcx
             EmitBinaryOperation(compound.Operator, "rax", "rcx");
         }
+        else if (compound.Operator == BinaryOperator.DivS ||
+                 compound.Operator == BinaryOperator.DivU ||
+                 compound.Operator == BinaryOperator.ModS ||
+                 compound.Operator == BinaryOperator.ModU)
+        {
+            // Division requires special handling
+            EmitLoadExpression(compound.Source, "rbx");
+            EmitBinaryOperation(compound.Operator, "rax", "rbx");
+        }
         else
         {
-            // ソース → rbx
-            EmitLoadExpression(compound.Source, "rbx");
-            // rax op= rbx
-            EmitBinaryOperation(compound.Operator, "rax", "rbx");
+            // Try to use memory operand for operations that support it
+            if (compound.Source is BaseOffsetAccess sourceAccess)
+            {
+                string memOperand;
+                if (sourceAccess.Base == BaseRegister.Sp)
+                {
+                    memOperand = $"[rsp + {sourceAccess.Offset}]";
+                }
+                else
+                {
+                    string baseLabel = sourceAccess.Base == BaseRegister.Data ? "_data_base" : "_rodata_base";
+                    memOperand = $"[rip + {baseLabel} + {sourceAccess.Offset}]";
+                }
+
+                // Emit operation with memory operand
+                switch (compound.Operator)
+                {
+                    case BinaryOperator.Add:
+                        Emit($"    add rax, {memOperand}");
+                        break;
+                    case BinaryOperator.Sub:
+                        Emit($"    sub rax, {memOperand}");
+                        break;
+                    case BinaryOperator.Mul:
+                        Emit($"    imul rax, {memOperand}");
+                        break;
+                    case BinaryOperator.And:
+                        Emit($"    and rax, {memOperand}");
+                        break;
+                    case BinaryOperator.Or:
+                        Emit($"    or rax, {memOperand}");
+                        break;
+                    case BinaryOperator.Xor:
+                        Emit($"    xor rax, {memOperand}");
+                        break;
+                    default:
+                        // Fallback to register operand
+                        EmitLoadExpression(compound.Source, "rbx");
+                        EmitBinaryOperation(compound.Operator, "rax", "rbx");
+                        break;
+                }
+            }
+            else
+            {
+                // ソース → rbx
+                EmitLoadExpression(compound.Source, "rbx");
+                // rax op= rbx
+                EmitBinaryOperation(compound.Operator, "rax", "rbx");
+            }
         }
 
         // rax → 代入先
@@ -359,6 +423,35 @@ public class LlvmCodeGenerator
         };
     }
 
+    private string GetCmovInstruction(ComparisonOperator op, bool invert)
+    {
+        // cmov instruction mapping (same logic as jump instructions)
+        return (op, invert) switch
+        {
+            (ComparisonOperator.Equal, false) => "cmove",
+            (ComparisonOperator.Equal, true) => "cmovne",
+            (ComparisonOperator.NotEqual, false) => "cmovne",
+            (ComparisonOperator.NotEqual, true) => "cmove",
+            (ComparisonOperator.LessS, false) => "cmovl",
+            (ComparisonOperator.LessS, true) => "cmovge",
+            (ComparisonOperator.LessU, false) => "cmovb",
+            (ComparisonOperator.LessU, true) => "cmovae",
+            (ComparisonOperator.LessEqualS, false) => "cmovle",
+            (ComparisonOperator.LessEqualS, true) => "cmovg",
+            (ComparisonOperator.LessEqualU, false) => "cmovbe",
+            (ComparisonOperator.LessEqualU, true) => "cmova",
+            (ComparisonOperator.GreaterS, false) => "cmovg",
+            (ComparisonOperator.GreaterS, true) => "cmovle",
+            (ComparisonOperator.GreaterU, false) => "cmova",
+            (ComparisonOperator.GreaterU, true) => "cmovbe",
+            (ComparisonOperator.GreaterEqualS, false) => "cmovge",
+            (ComparisonOperator.GreaterEqualS, true) => "cmovl",
+            (ComparisonOperator.GreaterEqualU, false) => "cmovae",
+            (ComparisonOperator.GreaterEqualU, true) => "cmovb",
+            _ => throw new NotImplementedException($"比較演算子 {op} は未対応です")
+        };
+    }
+
     private void EmitLoadExpression(Expression expr, string destReg)
     {
         switch (expr)
@@ -393,19 +486,78 @@ public class LlvmCodeGenerator
                     binOp.Operator == BinaryOperator.RightShiftU)
                 {
                     EmitLoadExpression(binOp.Left, destReg);
-                    Emit($"    mov r8, {destReg}");
+                    Emit($"    mov rbx, {destReg}");  // Save left operand to rbx
                     EmitLoadExpression(binOp.Right, "rcx");
-                    Emit($"    mov {destReg}, r8");
+                    Emit($"    mov {destReg}, rbx");  // Restore left operand
                     EmitBinaryOperation(binOp.Operator, destReg, "rcx");
+                }
+                else if (binOp.Operator == BinaryOperator.DivS ||
+                         binOp.Operator == BinaryOperator.DivU ||
+                         binOp.Operator == BinaryOperator.ModS ||
+                         binOp.Operator == BinaryOperator.ModU)
+                {
+                    // Division requires rax/rdx, load dividend to rax, divisor to rbx
+                    EmitLoadExpression(binOp.Left, destReg);  // Load left (dividend) to rax
+                    Emit($"    mov r12, {destReg}");  // Save dividend to r12
+                    EmitLoadExpression(binOp.Right, "rbx");  // Load divisor to rbx
+                    Emit($"    mov {destReg}, r12");  // Restore dividend to rax
+                    EmitBinaryOperation(binOp.Operator, destReg, "rbx");
                 }
                 else
                 {
-                    // 通常の演算：左辺を r8 に退避、右辺を直接 rbx にロード
+                    // Simplified: load left → operation with right (memory operand allowed)
                     EmitLoadExpression(binOp.Left, destReg);
-                    Emit($"    mov r8, {destReg}");
-                    EmitLoadExpression(binOp.Right, "rbx");
-                    Emit($"    mov {destReg}, r8");
-                    EmitBinaryOperation(binOp.Operator, destReg, "rbx");
+
+                    // For operations that support memory operands (add, sub, imul, and, or, xor)
+                    // Check if right operand is a direct memory access
+                    if (binOp.Right is BaseOffsetAccess rightAccess)
+                    {
+                        // Generate memory operand directly
+                        string memOperand;
+                        if (rightAccess.Base == BaseRegister.Sp)
+                        {
+                            memOperand = $"[rsp + {rightAccess.Offset}]";
+                        }
+                        else
+                        {
+                            string baseLabel = rightAccess.Base == BaseRegister.Data ? "_data_base" : "_rodata_base";
+                            memOperand = $"[rip + {baseLabel} + {rightAccess.Offset}]";
+                        }
+
+                        // Emit operation with memory operand
+                        switch (binOp.Operator)
+                        {
+                            case BinaryOperator.Add:
+                                Emit($"    add {destReg}, {memOperand}");
+                                break;
+                            case BinaryOperator.Sub:
+                                Emit($"    sub {destReg}, {memOperand}");
+                                break;
+                            case BinaryOperator.Mul:
+                                Emit($"    imul {destReg}, {memOperand}");
+                                break;
+                            case BinaryOperator.And:
+                                Emit($"    and {destReg}, {memOperand}");
+                                break;
+                            case BinaryOperator.Or:
+                                Emit($"    or {destReg}, {memOperand}");
+                                break;
+                            case BinaryOperator.Xor:
+                                Emit($"    xor {destReg}, {memOperand}");
+                                break;
+                            default:
+                                // Fallback to register operand
+                                EmitLoadExpression(binOp.Right, "rbx");
+                                EmitBinaryOperation(binOp.Operator, destReg, "rbx");
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        // Other expressions: load to rbx and operate
+                        EmitLoadExpression(binOp.Right, "rbx");
+                        EmitBinaryOperation(binOp.Operator, destReg, "rbx");
+                    }
                 }
                 break;
 
@@ -432,7 +584,7 @@ public class LlvmCodeGenerator
         }
         else
         {
-            // Data/Const: RIP-relative addressing required
+            // Data/Const: RIP-relative direct memory access
             string baseLabel = access.Base switch
             {
                 BaseRegister.Data => "_data_base",
@@ -440,9 +592,8 @@ public class LlvmCodeGenerator
                 _ => throw new NotImplementedException($"ベースレジスタ {access.Base} は未対応です")
             };
 
-            // Use temporary register for RIP-relative addressing
-            Emit($"    lea r10, [rip + {baseLabel}]");
-            Emit($"    mov {destReg}, [r10 + {access.Offset}]");
+            // Direct RIP-relative memory access (LLVM MC supports this)
+            Emit($"    mov {destReg}, [rip + {baseLabel} + {access.Offset}]");
         }
     }
 
