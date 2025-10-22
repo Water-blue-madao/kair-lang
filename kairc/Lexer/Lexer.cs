@@ -18,43 +18,6 @@ public class Lexer
         { "END", TokenType.End },
         { "align", TokenType.Align },
         { "syscall", TokenType.Syscall },
-
-        // メモリアクセス
-        { "mem", TokenType.Mem },
-        { "mem8", TokenType.Mem8 },
-        { "mem16", TokenType.Mem16 },
-        { "mem32", TokenType.Mem32 },
-        { "mem64", TokenType.Mem64 },
-        { "mem8s", TokenType.Mem8s },
-        { "mem16s", TokenType.Mem16s },
-        { "mem32s", TokenType.Mem32s },
-
-        { "s", TokenType.S },
-        { "s8", TokenType.S8 },
-        { "s16", TokenType.S16 },
-        { "s32", TokenType.S32 },
-        { "s64", TokenType.S64 },
-        { "s8s", TokenType.S8s },
-        { "s16s", TokenType.S16s },
-        { "s32s", TokenType.S32s },
-
-        { "d", TokenType.D },
-        { "d8", TokenType.D8 },
-        { "d16", TokenType.D16 },
-        { "d32", TokenType.D32 },
-        { "d64", TokenType.D64 },
-        { "d8s", TokenType.D8s },
-        { "d16s", TokenType.D16s },
-        { "d32s", TokenType.D32s },
-
-        { "c", TokenType.C },
-        { "c8", TokenType.C8 },
-        { "c16", TokenType.C16 },
-        { "c32", TokenType.C32 },
-        { "c64", TokenType.C64 },
-        { "c8s", TokenType.C8s },
-        { "c16s", TokenType.C16s },
-        { "c32s", TokenType.C32s },
     };
 
     public Lexer(string source)

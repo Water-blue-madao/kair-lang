@@ -193,16 +193,13 @@ public class LlvmCodeGenerator
             case BaseOffsetAccess baseOffset:
                 EmitStoreToBaseOffset(baseOffset, sourceReg);
                 break;
-            case MemoryAccess mem:
-                EmitStoreToMemory(mem, sourceReg);
-                break;
             default:
                 throw new NotImplementedException($"{dest.GetType().Name} への保存は未対応です");
         }
     }
 
     /// <summary>
-    /// 新しい統一メモリアクセス構文へのストア: [base + offset]
+    /// 統一メモリアクセス構文へのストア: [base + offset]
     /// レジスタを消費せず、直接アドレッシング
     /// </summary>
     private void EmitStoreToBaseOffset(BaseOffsetAccess access, string sourceReg)
@@ -474,10 +471,6 @@ public class LlvmCodeGenerator
                 EmitLoadFromBaseOffset(baseOffset, destReg);
                 break;
 
-            case MemoryAccess mem:
-                EmitLoadFromMemory(mem, destReg);
-                break;
-
             case BinaryOperation binOp:
                 // 重要: push/pop を使わない (RSP を変更してはならない)
                 // シフト演算は RCX を使う必要があるため特別扱い
@@ -572,7 +565,7 @@ public class LlvmCodeGenerator
     }
 
     /// <summary>
-    /// 新しい統一メモリアクセス構文からロード: [base + offset]
+    /// 統一メモリアクセス構文からロード: [base + offset]
     /// レジスタを消費せず、直接アドレッシング
     /// </summary>
     private void EmitLoadFromBaseOffset(BaseOffsetAccess access, string destReg)
@@ -597,105 +590,6 @@ public class LlvmCodeGenerator
         }
     }
 
-    private void EmitLoadFromMemory(MemoryAccess mem, string destReg)
-    {
-        // 完全に単純化: アドレス計算 → ロード (各ステップで完結)
-        var address = CalculateAddress(mem);
-        var size = GetMemorySize(mem.Type);
-        var isSigned = IsSignedMemoryType(mem.Type);
-
-        switch (size)
-        {
-            case 8:
-                Emit($"    mov {destReg}, [{address}]");
-                break;
-            case 4:
-                if (isSigned)
-                    Emit($"    movsxd {destReg}, dword [{address}]");
-                else
-                    Emit($"    mov {GetRegisterSize(destReg, 4)}, dword [{address}]");
-                break;
-            case 2:
-                if (isSigned)
-                    Emit($"    movsx {destReg}, word [{address}]");
-                else
-                    Emit($"    movzx {destReg}, word [{address}]");
-                break;
-            case 1:
-                if (isSigned)
-                    Emit($"    movsx {destReg}, byte [{address}]");
-                else
-                    Emit($"    movzx {destReg}, byte [{address}]");
-                break;
-        }
-    }
-
-    private void EmitStoreToMemory(MemoryAccess mem, string sourceReg)
-    {
-        // スタックを使わずに sourceReg を退避 (push は RSP を変更してしまう)
-        Emit($"    mov rbx, {sourceReg}  # Save value");
-        var address = CalculateAddress(mem);
-        Emit($"    mov {sourceReg}, rbx  # Restore value");
-
-        var size = GetMemorySize(mem.Type);
-
-        switch (size)
-        {
-            case 8:
-                Emit($"    mov [{address}], {sourceReg}");
-                break;
-            case 4:
-                Emit($"    mov dword [{address}], {GetRegisterSize(sourceReg, 4)}");
-                break;
-            case 2:
-                Emit($"    mov word [{address}], {GetRegisterSize(sourceReg, 2)}");
-                break;
-            case 1:
-                Emit($"    mov byte [{address}], {GetRegisterSize(sourceReg, 1)}");
-                break;
-        }
-    }
-
-    private string CalculateAddress(MemoryAccess mem)
-    {
-        // 完全に単純化: アドレス計算専用レジスタ rdi を使用
-        var baseReg = mem.Type switch
-        {
-            MemoryType.Mem or MemoryType.Mem8 or MemoryType.Mem16 or MemoryType.Mem32 or MemoryType.Mem64 or
-            MemoryType.Mem8s or MemoryType.Mem16s or MemoryType.Mem32s => null,
-
-            MemoryType.S or MemoryType.S8 or MemoryType.S16 or MemoryType.S32 or MemoryType.S64 or
-            MemoryType.S8s or MemoryType.S16s or MemoryType.S32s => "rsp",
-
-            MemoryType.D or MemoryType.D8 or MemoryType.D16 or MemoryType.D32 or MemoryType.D64 or
-            MemoryType.D8s or MemoryType.D16s or MemoryType.D32s => "_data_base",
-
-            MemoryType.C or MemoryType.C8 or MemoryType.C16 or MemoryType.C32 or MemoryType.C64 or
-            MemoryType.C8s or MemoryType.C16s or MemoryType.C32s => "_rodata_base",
-
-            _ => throw new NotImplementedException($"メモリ種別 {mem.Type} は未対応です")
-        };
-
-        // アドレス計算を rdi で行う (専用レジスタとして利用)
-        EmitLoadExpression(mem.Address, "rdi");
-
-        if (baseReg != null)
-        {
-            if (baseReg.StartsWith("_"))
-            {
-                // d[], c[] の場合
-                Emit($"    lea rsi, [{baseReg}]");
-                Emit($"    add rdi, rsi");
-            }
-            else
-            {
-                // s[] の場合
-                Emit($"    add rdi, {baseReg}");
-            }
-        }
-
-        return "rdi";
-    }
 
     private void EmitBinaryOperation(BinaryOperator op, string destReg, string sourceReg)
     {
@@ -769,34 +663,6 @@ public class LlvmCodeGenerator
         }
     }
 
-    // DEPRECATED: メモリサイズ指定 (s8, s16, s32, mem8, etc.) は廃止予定
-    // 別の構文で対応する予定のため、この機能は将来削除される
-    private int GetMemorySize(MemoryType type)
-    {
-        return type switch
-        {
-            MemoryType.Mem or MemoryType.Mem64 or MemoryType.S or MemoryType.S64 or
-            MemoryType.D or MemoryType.D64 or MemoryType.C or MemoryType.C64 => 8,
-
-            MemoryType.Mem32 or MemoryType.Mem32s or MemoryType.S32 or MemoryType.S32s or
-            MemoryType.D32 or MemoryType.D32s or MemoryType.C32 or MemoryType.C32s => 4,
-
-            MemoryType.Mem16 or MemoryType.Mem16s or MemoryType.S16 or MemoryType.S16s or
-            MemoryType.D16 or MemoryType.D16s or MemoryType.C16 or MemoryType.C16s => 2,
-
-            MemoryType.Mem8 or MemoryType.Mem8s or MemoryType.S8 or MemoryType.S8s or
-            MemoryType.D8 or MemoryType.D8s or MemoryType.C8 or MemoryType.C8s => 1,
-
-            _ => throw new NotImplementedException($"メモリ種別 {type} は未対応です")
-        };
-    }
-
-    // DEPRECATED: メモリサイズ指定は廃止予定
-    private bool IsSignedMemoryType(MemoryType type)
-    {
-        return type.ToString().EndsWith("s");
-    }
-
     private string GetRegisterSize(string reg, int size)
     {
         // raxの場合: 8=rax, 4=eax, 2=ax, 1=al
@@ -839,27 +705,8 @@ public class LlvmCodeGenerator
 
     private void EmitSyscallArgument(Expression arg, string destReg)
     {
-        // システムコールの引数では、d[] と c[] は値ではなくアドレスを読み込む必要がある
-        if (arg is MemoryAccess mem && (
-            mem.Type == MemoryType.D || mem.Type == MemoryType.D8 || mem.Type == MemoryType.D16 ||
-            mem.Type == MemoryType.D32 || mem.Type == MemoryType.D64 ||
-            mem.Type == MemoryType.D8s || mem.Type == MemoryType.D16s || mem.Type == MemoryType.D32s ||
-            mem.Type == MemoryType.C || mem.Type == MemoryType.C8 || mem.Type == MemoryType.C16 ||
-            mem.Type == MemoryType.C32 || mem.Type == MemoryType.C64 ||
-            mem.Type == MemoryType.C8s || mem.Type == MemoryType.C16s || mem.Type == MemoryType.C32s))
-        {
-            // データ/定数セクションのアドレスをロード
-            EmitLoadExpression(mem.Address, "rdi");
-            var baseLabel = mem.Type.ToString().StartsWith("D") ? "_data_base" : "_rodata_base";
-            Emit($"    lea rsi, [{baseLabel}]");
-            Emit($"    add rdi, rsi");
-            Emit($"    mov {destReg}, rdi  # Load address of {mem.Type}[]");
-        }
-        else
-        {
-            // 通常の値読み込み
-            EmitLoadExpression(arg, destReg);
-        }
+        // 通常の値読み込み
+        EmitLoadExpression(arg, destReg);
     }
 
     private void EmitSyscall(Syscall syscall)

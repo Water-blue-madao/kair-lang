@@ -62,7 +62,6 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
 - Produces IR tree (IrNode)
 - Key parsing patterns:
   - **Top-level constraint**: Data initialization (`[data/const + offset] = value`) only at start
-  - **Syntax sugar desugaring**: `s[x]` → `[sp + x]`, `d[x]` → `[data + x]`, `c[x]` → `[const + x]`
   - Statement parsing uses explicit lookahead (`Check()` / `Peek()`)
 
 **IR** (`kairc/IR/IrNode.cs`)
@@ -88,7 +87,7 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
 
 **Native RSP Usage**
 - `sp` in KIR directly maps to native RSP (not a virtual register)
-- `s[offset]` compiles to `[rsp + offset]`
+- `[sp + offset]` compiles to `[rsp + offset]`
 - Internal implementation MUST NOT modify RSP except for explicit `sp += / sp -=` operations
 - This is why `push`/`pop` are forbidden in code generation
 - **Stack allocation**: `sp -= N` decreases RSP (stack grows downward)
@@ -96,7 +95,6 @@ tools/llvm/bin/lld-link.exe output.obj tools/llvm/lib/kernel32.lib /subsystem:co
 **Memory Access Unification**
 - Single syntax: `[base + offset]` where base ∈ {sp, data, const}
 - Static offsets only (no dynamic offset expressions like `[sp + x + y]`)
-- Syntax sugar (`s[]`, `d[]`, `c[]`) desugars during parsing
 
 **Complete Naive Implementation**
 - Binary operations: `mov rax, [left]; mov r8, rax; mov rbx, [right]; mov rax, r8; op rax, rbx`
@@ -237,17 +235,17 @@ AI: [analyzes and continues work]
 
 ## Language Specification Summary
 
-**Memory Access**: `[sp + offset]`, `[data + offset]`, `[const + offset]` (sugar: `s[]`, `d[]`, `c[]`)
+**Memory Access**: `[sp + offset]`, `[data + offset]`, `[const + offset]`
 
-**Base Address Access** (NEW):
+**Base Address Access**:
 ```kir
-s[8] = data         // Load address of data section base
-s[8] += 32          // Calculate offset address
-syscall WriteFile, handle, data, length, s[8], 0  // Pass address directly
+[sp + 8] = data     // Load address of data section base
+[sp + 8] += 32      // Calculate offset address
+syscall WriteFile, handle, data, length, [sp + 8], 0  // Pass address directly
 ```
 - `data` and `const` can be used as address values
 - Compiles to `lea reg, [rip + _data_base]` or `lea reg, [rip + _rodata_base]`
-- **CRITICAL**: `d[0]` loads the **value** at data+0, `data` loads the **address** of data section
+- **CRITICAL**: `[data + 0]` loads the **value** at data+0, `data` loads the **address** of data section
 
 **Stack Operations**:
 ```kir
@@ -275,12 +273,12 @@ align 8          // Align stack to 8-byte boundary
 
 **Conditional Assignment** (implemented but not in samples):
 ```kir
-s[0] = 10 if s[8] >s 0                  // Assign only if condition is true
+[sp + 0] = 10 if [sp + 8] >s 0                  // Assign only if condition is true
 ```
 
 **Ternary Operator** (implemented but not in samples):
 ```kir
-s[0] = (s[8] >s 0) ? 100 : 200         // Conditional value selection
+[sp + 0] = ([sp + 8] >s 0) ? 100 : 200         // Conditional value selection
 ```
 
 **Syntax Constraints** (CRITICAL):
@@ -288,25 +286,25 @@ s[0] = (s[8] >s 0) ? 100 : 200         // Conditional value selection
 - Expression composition is not supported - cannot combine operations or use computation results directly
 - Examples of what's NOT allowed:
   ```kir
-  s[0] = (s[8] + 10) * 2                      // NO: cannot combine operations
-  syscall ExitProcess, s[0] + 1               // NO: cannot compute in arguments
-  syscall WriteFile, h, data + 8, len, ptr, 0 // NO: data + 8 not allowed
-  s[0] = ((s[8] > 0) ? 10 : 20) + 5          // NO: cannot use ternary result directly
+  [sp + 0] = ([sp + 8] + 10) * 2                      // NO: cannot combine operations
+  syscall ExitProcess, [sp + 0] + 1                   // NO: cannot compute in arguments
+  syscall WriteFile, h, data + 8, len, ptr, 0         // NO: data + 8 not allowed
+  [sp + 0] = (([sp + 8] > 0) ? 10 : 20) + 5          // NO: cannot use ternary result directly
   ```
 - Correct approach (store intermediate results explicitly):
   ```kir
-  s[0] = s[8] + 10
-  s[0] *= 2
+  [sp + 0] = [sp + 8] + 10
+  [sp + 0] *= 2
 
-  s[0] += 1
-  syscall ExitProcess, s[0]
+  [sp + 0] += 1
+  syscall ExitProcess, [sp + 0]
 
-  s[16] = data
-  s[16] += 8
-  syscall WriteFile, h, s[16], len, ptr, 0
+  [sp + 16] = data
+  [sp + 16] += 8
+  syscall WriteFile, h, [sp + 16], len, ptr, 0
 
-  s[0] = (s[8] > 0) ? 10 : 20
-  s[0] += 5
+  [sp + 0] = ([sp + 8] > 0) ? 10 : 20
+  [sp + 0] += 5
   ```
 
 **Control Flow**: `goto label`, `goto label if condition`
@@ -316,7 +314,7 @@ s[0] = (s[8] >s 0) ? 100 : 200         // Conditional value selection
 align 16
 syscall ExitProcess, 0
 align 16
-s[0] = syscall GetStdHandle, -11
+[sp + 0] = syscall GetStdHandle, -11
 ```
 
 **Comments**: `// single line`, `/* multi-line */`
@@ -404,7 +402,7 @@ All sample `.kir` files must follow this format to maintain consistency and clar
 4. **Using `[rel label]` instead of `[rip + label]`**: LLVM MC syntax requires `rip +`, not just `rel`
 5. **Stale build artifacts**: Build script auto-cleans before building, but manual testing may need extra cleanup
 6. **Committing workspace/ artifacts**: Only `.kir` files should be in git
-7. **Confusing `d[0]` vs `data`**: `d[0]` = value at data+0, `data` = address of data section base
+7. **Confusing `[data + 0]` vs `data`**: `[data + 0]` = value at data+0, `data` = address of data section base
 
 
 

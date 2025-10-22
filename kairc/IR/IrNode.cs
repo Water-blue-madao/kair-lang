@@ -43,20 +43,20 @@ public class Label : Statement
 
 public class Assignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // BaseOffsetAccess
     public Expression Source { get; set; } = null!;
 }
 
 public class ConditionalAssignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // BaseOffsetAccess
     public Expression Source { get; set; } = null!;
     public Condition Condition { get; set; } = null!;
 }
 
 public class TernaryAssignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // BaseOffsetAccess
     public Condition Condition { get; set; } = null!;
     public Expression TrueValue { get; set; } = null!;
     public Expression FalseValue { get; set; } = null!;
@@ -64,7 +64,7 @@ public class TernaryAssignment : Statement
 
 public class CompoundAssignment : Statement
 {
-    public Expression Destination { get; set; } = null!;  // MemoryAccess または BaseOffsetAccess
+    public Expression Destination { get; set; } = null!;  // BaseOffsetAccess
     public BinaryOperator Operator { get; set; }
     public Expression Source { get; set; } = null!;
 }
@@ -98,7 +98,7 @@ public class Align : Statement
 
 public class Syscall : Statement
 {
-    public Expression? Destination { get; set; }  // null の場合は戻り値なし (MemoryAccess または BaseOffsetAccess)
+    public Expression? Destination { get; set; }  // null の場合は戻り値なし (BaseOffsetAccess)
     public string FunctionName { get; set; } = "";
     public List<Expression> Arguments { get; set; } = new();
 }
@@ -113,20 +113,11 @@ public class NumberLiteral : Expression
     public bool IsLong { get; set; }  // @long アノテーション
 }
 
-public class MemoryAccess : Expression
-{
-    public MemoryType Type { get; set; }
-    public Expression Address { get; set; } = null!;
-
-    // 最適化用（将来実装）
-    public string? AllocatedRegister { get; set; }
-}
-
 public class StackPointer : Expression { }  // sp
 
 /// <summary>
 /// データベースアドレス (data, const) - アドレス値として使用
-/// 例: s[8] = data; s[8] += 32
+/// 例: [sp + 8] = data; [sp + 8] += 32
 /// </summary>
 public class DataBaseAddress : Expression
 {
@@ -134,9 +125,9 @@ public class DataBaseAddress : Expression
 }
 
 /// <summary>
-/// 新しい統一メモリアクセス構文: [base + offset]
+/// 統一メモリアクセス構文: [base + offset]
 /// base: sp, data, const
-/// offset: 静的な数値のみ（動的オフセットは内部的にサポートするが構文としては認めない）
+/// offset: 静的な数値のみ
 /// </summary>
 public class BaseOffsetAccess : Expression
 {
@@ -167,27 +158,6 @@ public class Condition : IrNode
 }
 
 // ========== 列挙型 ==========
-
-// DEPRECATED: メモリサイズ指定 (s8, s16, s32, mem8, etc.) は廃止予定
-// 別の構文で対応する予定のため、サイズ付きバリアントは将来削除される
-public enum MemoryType
-{
-    // ピュアメモリ
-    Mem, Mem8, Mem16, Mem32, Mem64,
-    Mem8s, Mem16s, Mem32s,
-
-    // スタック
-    S, S8, S16, S32, S64,
-    S8s, S16s, S32s,
-
-    // データセクション
-    D, D8, D16, D32, D64,
-    D8s, D16s, D32s,
-
-    // 定数セクション
-    C, C8, C16, C32, C64,
-    C8s, C16s, C32s,
-}
 
 public enum BinaryOperator
 {

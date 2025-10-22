@@ -202,14 +202,10 @@ public class Parser
             };
         }
 
-        // 代入系（新構文 [base + offset] と糖衣構文 s[]/d[]/c[] をサポート）
-        if (Check(TokenType.LeftBracket) || IsMemoryAccess())
+        // 代入系（[base + offset] 構文）
+        if (Check(TokenType.LeftBracket))
         {
-            Expression dest;
-            if (Check(TokenType.LeftBracket))
-                dest = ParseBaseOffsetAccess();
-            else
-                dest = ParseMemoryAccess();  // s[]/d[]/c[] は内部で [sp/data/const + offset] にデシュガーされる
+            Expression dest = ParseBaseOffsetAccess();
 
             // 複合代入 (+=, -=, etc.)
             if (IsCompoundAssignOperator())
@@ -404,16 +400,10 @@ public class Parser
             return new DataBaseAddress { Section = BaseRegister.Const };
         }
 
-        // 新しい統一メモリアクセス: [base + offset]
+        // 統一メモリアクセス: [base + offset]
         if (Check(TokenType.LeftBracket))
         {
             return ParseBaseOffsetAccess();
-        }
-
-        // 旧メモリアクセス (s[], d[], c[] など)
-        if (IsMemoryAccess())
-        {
-            return ParseMemoryAccess();
         }
 
         // 括弧
@@ -428,7 +418,7 @@ public class Parser
     }
 
     /// <summary>
-    /// 新しい統一メモリアクセス構文: [base + offset]
+    /// 統一メモリアクセス構文: [base + offset]
     /// base: sp, data, const
     /// offset: 静的な数値のみ
     /// </summary>
@@ -465,53 +455,6 @@ public class Parser
         };
     }
 
-    private Expression ParseMemoryAccess()
-    {
-        var type = ParseMemoryType();
-        Consume(TokenType.LeftBracket, "Expected '['");
-        var address = ParseExpression();
-        Consume(TokenType.RightBracket, "']' が必要です");
-
-        // シンタックスシュガー: s[x] -> [sp + x], d[x] -> [data + x], c[x] -> [const + x]
-        // アドレスが静的な数値の場合のみデシュガー可能
-        if (address is NumberLiteral num && !num.IsLong)
-        {
-            // s[] -> [sp + offset]
-            if (type >= MemoryType.S && type <= MemoryType.S32s)
-            {
-                return new BaseOffsetAccess
-                {
-                    Base = BaseRegister.Sp,
-                    Offset = num.Value
-                };
-            }
-            // d[] -> [data + offset]
-            else if (type >= MemoryType.D && type <= MemoryType.D32s)
-            {
-                return new BaseOffsetAccess
-                {
-                    Base = BaseRegister.Data,
-                    Offset = num.Value
-                };
-            }
-            // c[] -> [const + offset]
-            else if (type >= MemoryType.C && type <= MemoryType.C32s)
-            {
-                return new BaseOffsetAccess
-                {
-                    Base = BaseRegister.Const,
-                    Offset = num.Value
-                };
-            }
-        }
-
-        // デシュガーできない場合は旧形式のまま
-        return new MemoryAccess
-        {
-            Type = type,
-            Address = address
-        };
-    }
 
     // ========== 条件式 ==========
 
@@ -531,50 +474,6 @@ public class Parser
 
     // ========== 演算子パース ==========
 
-    private MemoryType ParseMemoryType()
-    {
-        var token = Advance();
-        return token.Type switch
-        {
-            TokenType.Mem => MemoryType.Mem,
-            TokenType.Mem8 => MemoryType.Mem8,
-            TokenType.Mem16 => MemoryType.Mem16,
-            TokenType.Mem32 => MemoryType.Mem32,
-            TokenType.Mem64 => MemoryType.Mem64,
-            TokenType.Mem8s => MemoryType.Mem8s,
-            TokenType.Mem16s => MemoryType.Mem16s,
-            TokenType.Mem32s => MemoryType.Mem32s,
-
-            TokenType.S => MemoryType.S,
-            TokenType.S8 => MemoryType.S8,
-            TokenType.S16 => MemoryType.S16,
-            TokenType.S32 => MemoryType.S32,
-            TokenType.S64 => MemoryType.S64,
-            TokenType.S8s => MemoryType.S8s,
-            TokenType.S16s => MemoryType.S16s,
-            TokenType.S32s => MemoryType.S32s,
-
-            TokenType.D => MemoryType.D,
-            TokenType.D8 => MemoryType.D8,
-            TokenType.D16 => MemoryType.D16,
-            TokenType.D32 => MemoryType.D32,
-            TokenType.D64 => MemoryType.D64,
-            TokenType.D8s => MemoryType.D8s,
-            TokenType.D16s => MemoryType.D16s,
-            TokenType.D32s => MemoryType.D32s,
-
-            TokenType.C => MemoryType.C,
-            TokenType.C8 => MemoryType.C8,
-            TokenType.C16 => MemoryType.C16,
-            TokenType.C32 => MemoryType.C32,
-            TokenType.C64 => MemoryType.C64,
-            TokenType.C8s => MemoryType.C8s,
-            TokenType.C16s => MemoryType.C16s,
-            TokenType.C32s => MemoryType.C32s,
-
-            _ => throw Error($"メモリ種別が必要ですが {token.Type} でした")
-        };
-    }
 
     private BinaryOperator ParseBinaryOperator()
     {
@@ -647,21 +546,6 @@ public class Parser
         return (long)token.Value!;
     }
 
-    private bool IsMemoryAccess()
-    {
-        return Check(TokenType.Mem) || Check(TokenType.Mem8) || Check(TokenType.Mem16) ||
-               Check(TokenType.Mem32) || Check(TokenType.Mem64) ||
-               Check(TokenType.Mem8s) || Check(TokenType.Mem16s) || Check(TokenType.Mem32s) ||
-               Check(TokenType.S) || Check(TokenType.S8) || Check(TokenType.S16) ||
-               Check(TokenType.S32) || Check(TokenType.S64) ||
-               Check(TokenType.S8s) || Check(TokenType.S16s) || Check(TokenType.S32s) ||
-               Check(TokenType.D) || Check(TokenType.D8) || Check(TokenType.D16) ||
-               Check(TokenType.D32) || Check(TokenType.D64) ||
-               Check(TokenType.D8s) || Check(TokenType.D16s) || Check(TokenType.D32s) ||
-               Check(TokenType.C) || Check(TokenType.C8) || Check(TokenType.C16) ||
-               Check(TokenType.C32) || Check(TokenType.C64) ||
-               Check(TokenType.C8s) || Check(TokenType.C16s) || Check(TokenType.C32s);
-    }
 
     private bool IsBinaryOperator()
     {

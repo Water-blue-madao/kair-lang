@@ -24,17 +24,17 @@
 
 // 標準出力ハンドルを取得
 align 16
-s[0] = syscall GetStdHandle, -11
+[sp + 0] = syscall GetStdHandle, -11
 
 // WriteFile の引数を準備
 // WriteFile(handle, buffer, length, &bytes_written, NULL)
 // バッファのアドレスと bytes_written の格納場所（アドレス）を、事前に計算して渡す必要がある
-s[8] = data       // s[8] = データセクション先頭のアドレス（バッファのアドレス）
-s[16] = data
-s[16] += 32      // s[16] = d[32] のアドレス（bytes_written の格納場所）
+[sp + 8] = data       // [sp + 8] = データセクション先頭のアドレス（バッファのアドレス）
+[sp + 16] = data
+[sp + 16] += 32      // [sp + 16] = [data + 32] のアドレス（bytes_written の格納場所）
 
 align 16
-syscall WriteFile, s[0], s[8], 15, s[16], 0
+syscall WriteFile, [sp + 0], [sp + 8], 15, [sp + 16], 0
 
-s[0]=42
+[sp + 0]=42
 goto END
